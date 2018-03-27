@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+	<ThingDef ParentName="BuildingBase">
+		<defName>LTF_TpBench</defName>
+		<label>Teleport bench</label>
+		<thingClass>Building_WorkTable</thingClass>
+
+		<graphicData>
+			<texPath>Things/Building/TpBench/TpBench</texPath>
+			<!-- <graphicClass>Graphic_Multi</graphicClass> -->
+			<graphicClass>Graphic_Multi</graphicClass>
+			<shaderType>CutoutComplex</shaderType>
+			<drawSize>(3.5,2.5)</drawSize>
+		</graphicData>
+
+		<!-- <rotatable>true</rotatable> -->
+		<defaultPlacingRot>North</defaultPlacingRot>
+		
+		<altitudeLayer>Building</altitudeLayer>
+		<passability>PassThroughOnly</passability>
+		<pathCost>80</pathCost>
+		<blockWind>true</blockWind>
+		<castEdgeShadows>true</castEdgeShadows>
+		<fillPercent>0.8</fillPercent>
+		<canOverlapZones>false</canOverlapZones>
+		<minifiedDef>MinifiedFurniture</minifiedDef>
+		<surfaceType>Item</surfaceType>
+
+		<resourcesFractionWhenDeconstructed>.3</resourcesFractionWhenDeconstructed>
+		
+		<statBases>
+			<!--<MarketValue>3000</MarketValue>-->
+			<WorkToBuild>3200</WorkToBuild>
+			<MaxHitPoints>250</MaxHitPoints>
+			<Flammability>1.0</Flammability>
+		</statBases>
+		
+		<tickerType>Normal</tickerType>
+
+		<description>A powered teleport bench.
+- Requires at least 1 teleport spot. Max 4.
+- Requires colonist on teleport spot.
+</description>
+		<size>(3,1)</size>
+		<designationCategory>Security</designationCategory>
+		<hasInteractionCell>true</hasInteractionCell>
+		<interactionCellOffset>(0,0,-1)</interactionCellOffset>
+		
+		<building>
+			<ai_chillDestination>false</ai_chillDestination>
+		</building>
+		
+	    <stuffCategories>
+			<li>Metallic</li>
+		</stuffCategories>
+		
+		<costStuffCount>150</costStuffCount>
+		<costList>
+			<Steel>50</Steel>
+			<Uranium>5</Uranium>
+			<Component>5</Component>
+		</costList>
+		
+		<comps>
+			<li Class="CompProperties_Explosive">
+				<explosiveRadius>2.66</explosiveRadius>
+				<explosiveDamageType>Flame</explosiveDamageType>
+			</li>
+			
+			<li Class="CompProperties_Power">
+				<compClass>CompPowerTrader</compClass>
+				<basePowerConsumption>250</basePowerConsumption>
+				<startElectricalFires>true</startElectricalFires>
+			</li>
+			<li Class="CompProperties_Flickable"/>
+			<li><compClass>CompQuality</compClass></li>
+			
+			<li Class="CompProperties_Facility">
+				<statOffsets>
+					<MarketValue>0.25</MarketValue>
+				</statOffsets>
+				<maxSimultaneous>4</maxSimultaneous>
+			</li>
+		</comps>
+		
+		<terrainAffordanceNeeded>Heavy</terrainAffordanceNeeded>
+		<staticSunShadowHeight>0.4</staticSunShadowHeight>
+		
+		<constructionSkillPrerequisite>10</constructionSkillPrerequisite>
+		
+		<placeWorkers>
+			<li>PlaceWorker_ShowFacilitiesConnections</li>
+		</placeWorkers>
+		
+		<researchPrerequisites>
+			<li>LTF_Research_TpBench</li>
+		</researchPrerequisites>
+		
+	</ThingDef>
+
+</Defs>
