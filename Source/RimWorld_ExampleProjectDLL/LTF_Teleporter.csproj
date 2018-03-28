@@ -50,7 +50,9 @@
   <ItemGroup>
     <Compile Include="CompProperties_LTF_TpSpot.cs" />
     <Compile Include="Comp_LTF_TpSpot.cs" />
-    <Compile Include="Graphic_Slideshow.cs" />
+    <Compile Include="LTF_TpDependencies.cs" />
+    <Compile Include="LTF_TpGfx.cs" />
+    <Compile Include="LTF_TpTools.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

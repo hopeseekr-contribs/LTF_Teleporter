@@ -17,17 +17,19 @@ namespace LTF_Teleport
     [StaticConstructorOnStartup]
     public class Comp_LTF_TpSpot : ThingComp
     {
-        // Can be a dead animal
-        Pawn standingUser = null;
+        // parent shortcurts
         Building building = null;
-        Building facility = null;
+        Vector3 buildingPos;
+        String buildingName = string.Empty;
 
         /* Comp */
         /******************/
-        private CompPowerTrader powerComp;
-        private CompQuality qualityComp;
+        public CompPowerTrader compPowerTrader;
+        
+        public CompQuality compQuality;
         // TpBench required
-        private CompAffectedByFacilities facilityPassiveComp;
+        public CompAffectedByFacilities compAffectedByFacilities;
+        public CompPowerTrader compPowerFacility;
         //        private CompFlickable flickComp;
 
         /* Caracteristics */
@@ -43,77 +45,70 @@ namespace LTF_Teleport
         float cooldownBase = 60 * 60f;
         float currentCooldown = 0f;
 
-        bool drawVanish = false;
-
-        /* Graphics */
-        /******************/
-        Mesh mesh1x1 = MeshPool.plane10;
-        static string overlayPath = "Things/Building/TpSpot/Overlay/";
-        //'nothing':'white','pawn':'yellow','item':'magenta',
-        //'nothing':'white','pawn':'yellow','item':'magenta',
-        private static readonly Material PoweredGfx = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Cutout);
-        /*
-        private static readonly Material YellowGfx = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Cutout, Color.yellow);
-        private static readonly Material MagentaGfx = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Transparent, Color.magenta);
-        */
-
-
-
-        /*
-                // 01
-                private static readonly Material BlueGfx = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Transparent, Color.blue);
-                // 02
-                private static readonly Material CyanGfx = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Transparent, Color.cyan);
-                // 03
-                private static readonly Material GreenGfx = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Transparent, Color.green);
-                // 04
-                private static readonly Material RedGfx = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Transparent, Color.red);
-                */
-
-        //private static readonly Graphic VanishGfx = GraphicDatabase.Get < Graphic_Slideshow >(overlayPath + "Vanish", ShaderDatabase.TransparentPostLight, Vector2.one, Color.white);
-        private static readonly Graphic VanishGfx = GraphicDatabase.Get<Graphic_Slideshow>(overlayPath + "Vanish", ShaderDatabase.MetaOverlay);
-
-        int opacityOrientation = 1;
-        float opacityIncrement = .006f;
-        float currentOpacity = .5f;
-
-
         /* Production */
         /******************/
-        List <Thing> tpThingList = new List<Thing>();
-        bool gfxDebug=false;
-        bool prcDebug = false;
-
-        private void OpacityIterate(float min, float max)
+        List<Thing> tpThingList = new List<Thing>();
+        // Can be a dead animal
+        Building facility = null;
+        Pawn standingUser = null;
+        [Flags]
+        enum BuildingStatus
         {
-            if (gfxDebug) Log.Warning(currentOpacity + " += " + opacityOrientation + " * " + opacityIncrement);
+            na          =0,
 
-            currentOpacity += (opacityOrientation * opacityIncrement);
+            noPower     =1,
+            noFacility  =2,
+            noItem      =4,
+            overweight  =8,
+            cooldown    =16,
+            //x2
+            noPowerNoFaci= noPower | noFacility,
+            noPowerNoItem= noPower | noItem,
+            noPowerOverweight= noPower | overweight,
+            noPowerCooldown= noPower | cooldown,
 
-            if ( currentOpacity != (currentOpacity = boundariesRespect(currentOpacity, min, max)))
-            {
-                OpacityBounce();
-                currentOpacity += (opacityOrientation * opacityIncrement);
-            }
+            noFacilityNoitem = noFacility|noItem,
+            noFacilityoverweight = noFacility|overweight,
+            noFacilityCooldown = noFacility | cooldown,
 
-            if (currentOpacity != (currentOpacity = boundariesRespect(currentOpacity, 0, 1)))
-            {
-                Log.Warning("should not happen protect opacity crap");
-            }
-        }
+            noItemOveW = noItem | overweight,
+            noItemCooldown= noItem | cooldown,
 
-        private float boundariesRespect(float val, float min, float max)
-        {
-            if (val < min) return min;
-            if (val > max) return max;
-            return val;
-        }
-        private void OpacityBounce()
-        {
-            if (gfxDebug) Log.Warning("Bouncing" + building.Label);
-            opacityOrientation *= -1;
-        }
+            Overweight= overweight | cooldown,
+            //x3
+            noPowernoFacilityNoItem = noPower | noFacility | noItem,
+            noPowerNoFacilityOverweight= noPower | noFacility | overweight,
+            noPowernoFacilityCooldown= noPower | noFacility | cooldown,
 
+            noFacilityNoitemOverweight= noFacility | noItem |overweight,
+            noFacilityNoitemCooldown= noFacility | noItem|cooldown,
+
+            noItemOverWCooldown= noItem | overweight |cooldown,
+            //x4
+            powerOk = noFacility | noItem|overweight | cooldown,
+            facilityOk=noPower | noItem|overweight | cooldown,
+            itemOk=noPower | noFacility|overweight | cooldown,
+            weightOk=noPower | noFacility | noItem| cooldown,
+            cooldownOk=noPower | noFacility | noItem|overweight,
+
+            //x5
+            allWrong = overweight | cooldown | noPower | noFacility | noItem,
+
+            capable=64,
+        };
+
+
+        public bool drawVanish = false;
+        public bool drawUnderlay = true;
+        public bool drawOverlay = true;
+
+        /* Debug */
+        /**********/
+        public bool gfxDebug = false;
+        public bool prcDebug = false;
+
+
+        // Props
         public CompProperties_LTF_TpSpot Props
         {
             get
@@ -122,280 +117,76 @@ namespace LTF_Teleport
             }
         }
 
-        public override void PostDraw()
+        // Dependency : Weight 
+        private void ResetWeight()
         {
-            base.PostDraw();
-
-            //Log.Warning("start drawing");
-            if (!CheckPower())
-            {
-                return;
-            }
-
-            Vector3 buildingPos = building.DrawPos;
-            if (buildingPos == null)
-            {
-                Log.Warning("null pos draw");
-                return;
-            }
-
-            if (building.Rotation != Rot4.North)
-            {
-                Log.Warning("Rotation");
-                return;
-            }
-
-            // higher than ground to be visible
-            //buildingPos.y += 4;
-            buildingPos.y += 0.046875f;
-
-            // nothing there standing
-            if (!HasFacility()) return;
-
-            Material overlay = PoweredGfx;
-            Color overlayColor = Color.white;
-
-            // Nothing on tile
-            if (!HasRegisteredItems)
-            {
-//                overlay = PoweredGfx;
-                if (gfxDebug) Log.Warning("white");
-            }
-            // something over building
-            else
-            {
-                if (HasRegisteredPawn)
-                {
-                    overlayColor = Color.yellow;
-                    //overlay = YellowGfx;
-                    if (gfxDebug) Log.Warning("yellow");
-                }
-                else
-                {
-                    overlayColor = Color.magenta;
-                    if (gfxDebug) Log.Warning("magenta");
-                }
-            }
-
-            //ChangeColor(overlay, myColor);
-            DrawPulse(parent, overlay, buildingPos, mesh1x1);
-
-            //Draw1x1Overlay( buildingPos, overlay, mesh1x1, 0, 0, myColor, randRot, flick, oscil, noFlickChance, minOpacity, maxOpacity);
-
-            if (drawVanish)
-            {
-                Vector3 drawPos = this.parent.DrawPos;
-                //drawPos.y += 0.046875f;
-                drawPos.y += 4;
-                VanishGfx.Draw(drawPos, Rot4.North, this.parent, 0f);
-            }
-            //Log.Warning("end drawing");
+            Tools.CapacityReset(currentWeight);
         }
-
-        private void Draw1x1Overlay(Vector3 buildingPos, Material gfx, Mesh mesh, float x, float z,
-                                Color overlayColor,
-                                bool randRotation = false,
-                                bool randFlicker = false,
-                                bool oscillatingOpacity = false,
-                                float noFlickChance = .985f, float minOpacity = .65f, float maxOpacity = 1f
-                                )
-                                
-        {
-            Vector3 dotPos = buildingPos;
-            dotPos.x += x;
-            dotPos.z += z;
-
-            Vector3 dotS = new Vector3(1f, 1f, 1f);
-            Matrix4x4 matrix = default(Matrix4x4);
-
-            float flickChance = 1 - noFlickChance;
-
-            float angle = 0f;
-            if (randRotation == true)
-                angle = (float)Rand.Range(0, 360);
-
-            float calculatedOpacity= maxOpacity;
-            if (oscillatingOpacity)
-            {
-                OpacityIterate(minOpacity,maxOpacity);
-                calculatedOpacity = currentOpacity;
-            }
-
-            Material fMat = null;
-            if (randFlicker)
-            {
-                if (Rand.Chance(flickChance))
-                {
-                    calculatedOpacity -= (currentWeight - minOpacity)/4;
-                }
-            }
-
-            if (calculatedOpacity < minOpacity)
-            {
-                calculatedOpacity = minOpacity;
-            }
-            else if (calculatedOpacity > maxOpacity)
-            {
-                calculatedOpacity = maxOpacity;
-            }
-
-            fMat = FadedMaterialPool.FadedVersionOf(gfx, calculatedOpacity);
-
-            matrix.SetTRS(dotPos, Quaternion.AngleAxis(angle, Vector3.up), dotS);
-            if (mesh == null)
-            {
-                Log.Warning("mesh null");
-                return;
-            }
-
-            Color newColor = overlayColor;
-            newColor.a = calculatedOpacity;
-            fMat.color = newColor;
-
-            Graphics.DrawMesh(mesh, matrix, fMat, 0);
-            if (gfxDebug)
-                Log.Warning("Drew:" + newColor);
-        }
-
-        private void ChangeColor(Material mat, Color color)
-        {
-            float baseOpacity = mat.color.a;
-            Color newColor = color;
-            newColor.a = baseOpacity;
-            mat.color = newColor;
-        }
-
-        private float PulseOpacity(Thing thing)
-        {
-            float num = (Time.realtimeSinceStartup + 397f * (float)(thing.thingIDNumber % 571)) * 4f;
-            float num2 = ((float)Math.Sin((double)num) + 1f) * 0.5f;
-            num2 = 0.3f + num2 * 0.7f;
-
-            return num2;
-        }
-        
-
-        private void DrawPulse(Thing thing, Material mat, Vector3 drawPos, Mesh mesh)
-        {
-            Material material = FadedMaterialPool.FadedVersionOf(mat, PulseOpacity(thing));
-
-            Vector3 dotS = new Vector3(1f, 1f, 1f);
-            Matrix4x4 matrix = default(Matrix4x4);
-
-            matrix.SetTRS(drawPos, Quaternion.AngleAxis(0f, Vector3.up), dotS);
-
-            Graphics.DrawMesh(mesh, matrix, material, 0);
-        }
-
         private void MoreWeight(Thing thing)
         {
             ChangeWeight(thing);
         }
-        private void LessWeight(Thing thing)
-        {
-            ChangeWeight(thing, false);
-        }
-
         private void ChangeWeight(Thing thing, bool addWeight = true)
         {
             float newWeight = thing.GetStatValue(StatDefOf.Mass, true);
             int plusOrMinus = ((addWeight) ? (1) : (-1));
 
             currentWeight += plusOrMinus * newWeight;
-            currentWeight = boundariesRespect(currentWeight, 0, 3000);
+            
+            currentWeight = Tools.LimitToRange(currentWeight, 0, 3000);
             currentWeight = (float)Math.Round((Decimal)currentWeight, 2, MidpointRounding.AwayFromZero);
 
             if(prcDebug)
                 Log.Warning(thing.LabelShort + " adds(" + plusOrMinus + ")" + newWeight + " -> " + currentWeight);
         }
 
-        private void ResetWeight()
+
+        private void SetWeightBase(CompQuality comp = null)
         {
-            currentWeight = 0;
+            weightCapacity = Tools.WeightedCapacity(Props.weightBase, Props.weightSpectrum, comp);
         }
 
-        // Check distant tile
-
-        string CapacityString(float capacity, float capacityMax)
+        //Dependency :Cooldown
+        private bool IsChilling()
         {
-            string buffer = string.Empty;
-            buffer = capacity + " / " + capacityMax;
-            return (buffer);
+            //return (currentCooldown != 0);
+            return Tools.CapacityUsing(currentCooldown);
+        }
+        private void SetCooldownBase(CompQuality comp = null)
+        {
+            cooldownBase = Tools.WeightedCapacity(Props.cooldownBase, Props.cooldownSpectrum, comp);
+        }
+        private void ResetCooldown()
+        {
+            Tools.CapacityReset(currentCooldown);
+        }
+        private void ForceCooldown()
+        {
+            currentCooldown=cooldownBase;
         }
 
-        public bool notCapaRequiring(float capacity)
+        //Dependency : facility
+        private bool HasRegisteredFacility
         {
-            return (currentWeight == 0f);
+            get
+            {
+                return (facility != null);
+            }
+        }
+        private bool HasPoweredFacility
+        {
+            get
+            {
+                return (Dependencies.TickCheckFacility(facility, compPowerFacility, prcDebug));
+            }
+        }
+        private void ResetFacility()
+        {
+            facility = null;
         }
 
-        public bool IsOverCapa(float capacity, float capacityMax)
-        {
-            return (capacity > capacityMax);
-        }
-
-        public void FullHax(float capacity, float capacityMax)
-        {
-            capacity = capacityMax;
-        }
-
-        public void StopVanish()
-        {
-            drawVanish = false;
-        }
-
-        public void StartVanish()
-        {
-            drawVanish = true;
-        }
-
-        public void ToggleForceDrawVanish()
-        {
-            drawVanish = !drawVanish;
-        }
-        public void TogglePrcDebug()
-        {
-            prcDebug = !prcDebug;
-        }
-        public void ToggleGfxDebug()
-        {
-            gfxDebug = !gfxDebug;
-        }
-
-        public bool CheckPower()
-        {
-            if (powerComp == null || !powerComp.PowerOn)
-                return false;
-            return true;
-        }
-        private bool CheckBuilding()
-        {
-            if (parent == null || parent.Map == null)
-                return false;
-            return true;
-        }
-        /*
-        private bool CheckUser()
-        {
-            standingUser = null;
-
-            Pawn maybeUser = null;
-            maybeUser = building.Position.GetFirstPawn(parent.Map);
-
-            if (maybeUser == null)
-                { //Log.Warning("null"); 
-                return false; };
-
-            if( 
-                (maybeUser.Faction != Faction.OfPlayer) ||
-                (maybeUser.mindState.mentalStateHandler.InMentalState)
-            )
-                return false;            
-
-            standingUser = maybeUser;
-            return true;
-
-        }
-        */
+        // Check local tile
+        // Items
         public int RegisteredCount
         {
             get
@@ -403,7 +194,6 @@ namespace LTF_Teleport
                 return tpThingList.Count;
             }
         }
-
         protected bool HasRegisteredItems
         {
             get
@@ -411,18 +201,11 @@ namespace LTF_Teleport
                 return !tpThingList.NullOrEmpty();
             }
         }
-/*
-        public bool hasItems()
-        {
-            return (!tpThingList.NullOrEmpty());
-        }
-        */
         private void ResetItems()
         {
             tpThingList.Clear();
             ResetWeight();
         }
-
         private bool RemoveItemsIfAbsent()
         {
 
@@ -443,7 +226,8 @@ namespace LTF_Teleport
                 }
 
                 Pawn pawn = thing as Pawn;
-                if ((pawn != null) && (standingUser != null)) {
+                if ((pawn != null) && (standingUser != null))
+                {
                     //Log.Warning(building.Label + " concerned about pawns");
                     if ((pawn != standingUser) || (pawn.Position != building.Position))
                     {
@@ -461,15 +245,13 @@ namespace LTF_Teleport
 
             return (HasRegisteredItems);
         }
-
         private void AddItem(Thing thing)
         {
-            if(prcDebug)
+            if (prcDebug)
                 Log.Warning("Adding " + thing.Label + " to " + building.Label);
 
             tpThingList.Add(thing);
         }
-
         private void RemoveItem(Thing thing)
         {
             if (prcDebug)
@@ -477,12 +259,10 @@ namespace LTF_Teleport
 
             tpThingList.Remove(thing);
         }
-
         private bool CheckNewItems()
         {
             return (AddSpotItems(building.Position.GetThingList(building.Map)));
         }
-
         private bool CheckItems()
         {
             bool foundItem = false;
@@ -492,35 +272,7 @@ namespace LTF_Teleport
 
             return (foundItem);
         }
-
-        private void CalculateWeight (bool foundItem)
-        {
-            if (foundItem)
-            {
-                SumWeight();
-                if (prcDebug)
-                    Log.Warning("weight:" + currentWeight);
-            }
-            else
-            {
-                if (prcDebug)
-                    Log.Warning("noting to weight");
-
-                if (currentWeight != 0)
-                    currentWeight = 0;
-            }
-        }
-
-        private bool CheckThingPresent(List<Thing> all)
-        {
-            return (! CheckNothing(all) );
-        }
-        private bool CheckNothing(List<Thing> all)
-        {
-            return (all.NullOrEmpty());
-        }
-
-        private bool AddSpotItems(List<Thing> allThings, bool clearIfEmpty=true)
+        private bool AddSpotItems(List<Thing> allThings, bool clearIfEmpty = true)
         {
             //Log.Warning(building.Label+" checking items");
             //if (CheckNothing(building.Position.GetThingList(building.Map)))
@@ -531,15 +283,15 @@ namespace LTF_Teleport
 
                 return false;
             }
-            
+
             Thing thing = null;
             bool found = false;
             int pawnN = 0;
 
             Pawn passenger = null;
 
-            if(prcDebug)
-                Log.Warning(building.Label+":"+allThings.Count);
+            if (prcDebug)
+                Log.Warning(building.Label + ":" + allThings.Count);
 
             for (int i = 0; i < allThings.Count; i++)
             {
@@ -598,17 +350,24 @@ namespace LTF_Teleport
 
             return found;
         }
+        private bool CheckThingPresent(List<Thing> all)
+        {
+            return (!CheckNothing(all));
+        }
+        private bool CheckNothing(List<Thing> all)
+        {
+            return (all.NullOrEmpty());
+        }
 
-        private void SetPawn(Pawn pawn=null)
+        // Special Item : pawn
+        private void SetPawn(Pawn pawn = null)
         {
             standingUser = pawn;
         }
-
         private void ResetPawn()
         {
             SetPawn();
         }
-
         private bool HasRegisteredPawn
         {
             get
@@ -617,260 +376,310 @@ namespace LTF_Teleport
             }
         }
 
-        private bool HasFacility()
+        //Gfx interface
+        public void StopVanish()
         {
-            return (facility != null);
+            drawVanish = false;
         }
+        //public void StartVanish(){drawVanish = true;}
 
-        private void ResetFacility()
-        {
-            facility = null;
-        }
-
-        private bool SetFacility(CompAffectedByFacilities facilityPassiveComp)
-        {
-            //Log.Warning("Trying to set facility");
-            if (facilityPassiveComp == null)
-            {
-                Log.Warning("facility comp err");
-                ResetFacility();
-                return false;
-            }
-
-            Thing thing = null;
-            if (facilityPassiveComp.LinkedFacilitiesListForReading.NullOrEmpty())
-            {
-                ResetFacility();
-                return false;
-            }
-
-            thing = facilityPassiveComp.LinkedFacilitiesListForReading.RandomElement();
-            if (thing == null)
-            {
-                // will happen when loading
-                //Log.Warning("facility thing err");
-                ResetFacility();
-                return false;
-            }
-
-            facility = thing as Building;
-            if (facility == null)
-            {
-                Log.Warning("facility building err");
-                ResetFacility();
-                return false;
-            }
-
-
-            return true;
-        }
-        private bool IsChilling()
-        {
-            return (!IsReady());
-        }
-        private bool IsReady()
-        {
-            return (currentCooldown == 0);
-        }
-
-        private float WeightedCapacity(float capacityBase, float capacitySpectrum)
-        {
-            if (qualityComp == null)
-            {
-                return (capacityBase);
-            }
-            // 0..8
-            return (capacityBase + (float)qualityComp.Quality * (capacitySpectrum / 8));
-        }
-
-        public override void PostSpawnSetup(bool respawningAfterLoad)
-        {
-            building = (Building)parent;
-
-
-            powerComp = building.TryGetComp<CompPowerTrader>();
-            qualityComp = building.TryGetComp<CompQuality>();
-            facilityPassiveComp = building.TryGetComp<CompAffectedByFacilities>();
-
-            SetFacility(facilityPassiveComp);
-            SetWeightCapacity();
-            SetCooldownBase();
-
-            //DumpProps();
-        }
-        private void SetWeightCapacity() {
-            weightCapacity = WeightedCapacity(Props.weightBase, Props.weightSpectrum);
-        }
-        private void SetCooldownBase()
-        {
-            cooldownBase = WeightedCapacity(Props.cooldownBase, Props.cooldownSpectrum);
-        }
+        // Debug 
         private void DumpProps(float val1, float val2, string myString = "bla: ")
         {
-            Log.Warning( myString + val1+ " / "+val2 );
+            Log.Warning(myString + val1 + " / " + val2);
         }
-
-        /*
-        public override void CompTickRare()
-        {
-            base.CompTickRare();
-            */
-        
-        public bool TeleportCapable()
-        {
-            if (HasRegisteredItems)
-                return false;
-
-            if (IsOverCapa(currentWeight, weightCapacity))
-                return false;
-
-            if (IsChilling())
-                return false;
-
-            return true;
-        }
-
-        public override void CompTick()
-        {
-            base.CompTick();
-        
-            if (!CheckBuilding())
-            {
-                Log.Warning("Impossibru");
-                return;
-            }
-
-            if (CheckPower())
-            {
-                if (IsChilling())
-                {
-                    currentCooldown -= 1;
-                    currentCooldown = ((currentCooldown < 0) ? (0) : (currentCooldown));
-                }
-
-                if (HasFacility())
-                {
-                    //CalculateWeight
-                    //Log.Warning(building.Label + "has facility");
-                    if (CheckItems())
-                    {
-
-                        if (prcDebug)
-                            Log.Warning("N:" + tpThingList.Count +":" + DumpList());
-                    }
-                }
-                else
-                {
-                    SetFacility(facilityPassiveComp);
-                }
-                
-            }
-        }
-
-        private void SumWeight()
-        {
-            currentWeight = 0;
-            
-            foreach(Thing item in tpThingList)
-            {
-                MoreWeight(item);
-            }
-            return;
-        }
-
         private string DumpList()
         {
             string bla = String.Empty;
-            foreach(Thing item in tpThingList)
+            foreach (Thing item in tpThingList)
             {
                 bla += item.Label + ";";
             }
             return bla;
         }
 
-        void SideEffect(Pawn pawn)
+        // Status management
+        private BuildingStatus TeleportCapable
         {
-            //random tp back ?
-//            AddThought(pawn);
-        }
-        /*
-        private void AddThought(Pawn pawn)
-        {
-            if (CorpseGrinding())
+            get
             {
-                if (HumanCorpseGrinding())
+                BuildingStatus Answer = BuildingStatus.na;
+
+                if (!Dependencies.CheckPower(building))
+                    Answer ^= BuildingStatus.noPower;
+
+                if (!HasRegisteredFacility)
+                    Answer ^= BuildingStatus.noFacility;
+
+                if (!HasRegisteredItems)
+                    Answer ^= BuildingStatus.noItem;
+
+                if (Tools.CapacityOverusing(currentWeight, weightCapacity))
+                    Answer ^= BuildingStatus.overweight;
+
+                if (Tools.CapacityUsing(currentCooldown))
+                    Answer ^= BuildingStatus.cooldown;
+
+                if (Answer == BuildingStatus.na)
+                    Answer = BuildingStatus.capable;
+
+                return Answer;
+            }
+        }
+        private bool HasStatus(BuildingStatus buildingStatus) { return ((TeleportCapable & buildingStatus) != 0); }
+        private bool StatusNoPower { get { return HasStatus(BuildingStatus.noPower); } }
+        private bool StatusNoFacility { get { return HasStatus(BuildingStatus.noFacility); } }
+        private bool StatusNoItem { get { return HasStatus(BuildingStatus.noItem); } }
+        private bool StatusHasItem { get { return !StatusNoItem; } }
+        private bool StatusOverweight { get { return HasStatus(BuildingStatus.overweight); } }
+        private bool StatusChillin { get { return HasStatus(BuildingStatus.cooldown); } }
+        private bool StatusReady { get { return HasStatus(BuildingStatus.capable); } }
+        string StatusExplanation()
+        {
+            string bla = string.Empty;
+
+            if (StatusNoPower)
+            {
+                bla += "No power; ";
+                return bla;
+            }
+            if (StatusNoFacility)
+            {
+                bla += "No facility; ";
+                return bla;
+            }
+
+            if (StatusOverweight)
+            {
+                bla += currentWeight + "kg. >" + weightCapacity + " kg. ";
+            }
+            if (StatusChillin)
+            {
+                float coolPerc = currentCooldown / cooldownBase;
+                bla += "Cooldown: " + coolPerc.ToStringPercent("F0")+" ";
+            }
+            if (StatusNoItem)
+            {
+                bla += "Nothing. ";
+            }
+
+            if (StatusReady)
+            {
+                int itemCount = RegisteredCount;
+                bla += RegisteredCount + " item" + ((RegisteredCount > 1) ? ("s") : ("")) + ". " + currentWeight + " kg. Max: " + weightCapacity + " kg. ";
+            }
+
+            bla=bla.Trim();
+
+            return bla;
+        }
+
+        // Overrides
+        public override void PostDraw()
+        {
+            base.PostDraw();
+
+            if (buildingPos == null)
+            {
+                Log.Warning("null pos draw");
+                return;
+            }
+
+            if (building.Rotation != Rot4.North)
+            {
+                Log.Warning("Rotation");
+                return;
+            }
+
+            // nothing there standing
+            if (StatusNoFacility || StatusNoPower)
+            {
+                if (gfxDebug)
+                    Log.Warning(buildingName + " Nothing to draw: " + TeleportCapable);
+                return;
+            }
+
+            //Color overlayColor = Color.white;
+            Material overlay = Gfx.MagentaPixel;
+            Material underlay = Gfx.MagentaPixel;
+
+            string checkIf = string.Empty;
+
+            // Nothing on tile
+            if (StatusNoItem)
+            {
+                overlay = Gfx.EmptyTile;
+                //                overlay = PoweredGfx;
+                checkIf = "nothing gfx";
+            }
+            // something over building
+            else
+            {
+                if (HasRegisteredPawn)
                 {
-                    standingUser.needs.mood.thoughts.memories.TryGainMemory(ThoughtDefOf.ButcheredHumanlikeCorpse, null);
-                    foreach (Pawn current in standingUser.Map.mapPawns.SpawnedPawnsInFaction(standingUser.Faction))
-                    {
-                        if (current != standingUser && current.needs != null && current.needs.mood != null && current.needs.mood.thoughts != null)
-                        {
-                            current.needs.mood.thoughts.memories.TryGainMemory(ThoughtDefOf.KnowButcheredHumanlikeCorpse, null);
-                        }
-                    }
-                    TaleRecorder.RecordTale(TaleDefOf.ButcheredHumanlikeCorpse, new object[]
-                    {
-                    standingUser
-                    });
+                    //overlayColor = Color.yellow;
+                    underlay = Gfx.YellowPixel;
+                    overlay = Gfx.PawnOverTile;
+                    checkIf = "pawn gfx";
                 }
                 else
                 {
-                    standingUser.needs.mood.thoughts.memories.TryGainMemory(ThoughtDef.Named("LTF_AnimalGrind"), null);
+                    //overlayColor = Color.magenta;
+                    underlay = Gfx.CyanPixel;
+                    overlay = Gfx.ItemOverTile;
+                    checkIf = "object gfx";
                 }
             }
+
+            if (gfxDebug) Log.Warning(checkIf);
+
+            // Underlay if item
+            if (StatusHasItem)
+                if (drawUnderlay)
+                    Gfx.DrawPulse(parent, underlay, MeshPool.plane10, Gfx.Layer.under, Gfx.OpacityWay.loop, gfxDebug);
+
+            // Overlay
+            if (drawOverlay)
+                Gfx.DrawPulse(parent, overlay, MeshPool.plane10, Gfx.Layer.over, Gfx.OpacityWay.pulse, gfxDebug);
+
+            //DrawColorPulse(parent, overlay, buildingPos, mesh1x1, overlayColor);
+            //Gfx.DrawPulse(parent, overlay, MeshPool.plane10, gfxDebug);
+
+            //ChangeColor(overlay, overlayColor, PulseOpacity(parent));
+            // Gfx.Draw1x1Overlay(buildingPos, overlay, mesh1x1, 1);
+            //Draw1x1Overlay( buildingPos, overlay, mesh1x1, 0, 0, myColor, randRot, flick, oscil, noFlickChance, minOpacity, maxOpacity);
+
+            if (drawVanish)
+            {
+                Vector3 drawPos = this.parent.DrawPos;
+                Gfx.Vanish.Draw(drawPos, Rot4.North, this.parent, 0f);
+            }
         }
-        */
+
+        public override void PostSpawnSetup(bool respawningAfterLoad)
+        {
+            building = (Building)parent;
+
+            buildingPos = building.DrawPos;
+            buildingName = building?.LabelShort;
+
+            compPowerTrader = building?.TryGetComp<CompPowerTrader>();
+
+            compQuality = building?.TryGetComp<CompQuality>();
+            SetWeightBase(compQuality);
+            SetCooldownBase(compQuality);
+
+            compAffectedByFacilities = building?.TryGetComp<CompAffectedByFacilities>();
+
+            if ((building != null) && (compAffectedByFacilities != null))
+                facility = Dependencies.GetFacility(building, compAffectedByFacilities, prcDebug);
+
+            compPowerFacility = facility?.TryGetComp<CompPowerTrader>();
+
+            //DumpProps();
+        }
+        public override void CompTick()
+        {
+            base.CompTick();
+
+            if (!Dependencies.CheckBuilding(building))
+            {
+                Log.Warning("Impossibru");
+                return;
+            }
+
+            string tellMe = string.Empty;
+
+            tellMe = buildingName + "(" + TeleportCapable + "): ";
+
+            // Will return if status
+            //Kooo
+            if (StatusNoPower || StatusNoFacility)
+            {
+                if (StatusNoPower)
+                {
+                    tellMe += "no power; ";
+                }
+
+                if (StatusNoFacility)
+                {
+                    tellMe += "no facility; ";
+                    facility = Dependencies.GetFacility(building, compAffectedByFacilities, prcDebug);
+                    if (HasRegisteredFacility)
+                    {
+                        tellMe += "but found" + facility.LabelShort;
+                    }
+                    else
+                    {
+                        tellMe += "but cant find any";
+                    }
+                    
+                }
+                if (prcDebug)
+                    Log.Warning(tellMe);
+
+                return;
+            }
+
+            //Okk
+            if (!HasPoweredFacility)
+            {
+                compPowerTrader = building?.TryGetComp<CompPowerTrader>();
+                if (compPowerTrader == null)
+                {
+                    ResetFacility();
+                    return;
+                }
+            }
+
+            CheckItems();
+
+
+                
+
+            if (StatusReady)
+            {
+                tellMe += "ready to tp " + "N:" + RegisteredCount + ":" + DumpList();
+
+                // Work here
+                //
+            }
+
+            if (StatusChillin)
+            {
+                tellMe += " Chillin;";
+                currentCooldown -= 1;
+                currentCooldown = ((currentCooldown < 0) ? (0) : (currentCooldown));
+            }
+            if (StatusOverweight)
+            {
+                tellMe += " overweight;";
+            }
+            if (StatusNoItem)
+            {
+                tellMe += " nothing2do;";
+            }
+
+            if (prcDebug)
+                Log.Warning(tellMe);
+        }
+
         public override void PostExposeData()
         {
             base.PostExposeData();
             Scribe_Values.Look(ref currentCooldown, "cooldown");
             Scribe_Values.Look(ref currentWeight, "weight");
-
             Scribe_References.Look(ref standingUser, "user");
             Scribe_Collections.Look(ref tpThingList, "things", LookMode.Reference, new object[0]);
-
-            //Scribe_References.Look(ref standingUser, "LTF_standingUser");
-
         }
-
         public override string CompInspectStringExtra()
         {
             string text = base.CompInspectStringExtra();
             string result = string.Empty;
 
-            if (this.powerComp == null || !this.powerComp.PowerOn || !HasFacility())
-            {
-                return null;
-            }
+            result += ((StatusReady) ? ("[Ok]") : ("[Ko]")) + " ";
+            result += StatusExplanation();
 
-            if (!HasRegisteredItems)
-            {
-                result += "Nothing on tile.";
-                return result;
-            }
-
-            bool mayI = TeleportCapable();
-            result += ((mayI) ? ("[Ok]") : ("[Ko]")) + " ";
-
-            if (mayI)
-            {
-                int itemCount = RegisteredCount;
-                result += itemCount + " item" + ((itemCount > 1) ? ("s") : ("")) + ". " + currentWeight + " kg. Max: " + weightCapacity + " kg.";
-            }
-            else
-            {
-                if (currentWeight > weightCapacity)
-                {
-                    result += "" + currentWeight + "kg. >" + weightCapacity + " kg.";
-                }
-                //string percent
-                else if (IsChilling() && cooldownBase != 0)
-                {
-                    float coolPerc = currentCooldown / cooldownBase;
-                    result += "Cooldown: " + coolPerc.ToStringPercent("F0");
-                }
-            }
-            
             if (!text.NullOrEmpty())
             {
                 result = "\n" + text;
@@ -882,24 +691,17 @@ namespace LTF_Teleport
         [DebuggerHidden]
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
-            if (CheckPower() && HasFacility())
+            if ( !StatusNoPower && !StatusNoFacility)
             {
                 if (HasRegisteredItems)
                 {
-                    /*
-                    yield return new Command_Action
-                    {
-                        action = new Action(this.Evacuation),
-                        defaultLabel = "Emergency evacuation",
-                        defaultDesc = "Forces amino acids evacuation",
-                        icon = ContentFinder<Texture2D>.Get("UI/Commands/LaunchReport", true)
-                    };
-                    */
-
+                    // TP command there
+                    //ForceCooldown();
                 }
+
                 if (Prefs.DevMode)
                 {
-
+                    /*
                     yield return new Command_Action
                     {
                         defaultLabel = "bad capa" + weightCapacity * .5f,
@@ -940,16 +742,16 @@ namespace LTF_Teleport
                         }
                     };
 
-
-                    if (IsReady())
+    */
+                    if (StatusReady)
                     {
                         yield return new Command_Action
                         {
-                            defaultLabel = "force cooldown",
+                            defaultLabel = "cool "+currentCooldown+"->"+currentCooldown,
                             defaultDesc = "c:" + currentCooldown,
                             action = delegate
                             {
-                                FullHax(currentCooldown, cooldownBase);
+                                ForceCooldown();
                             }
                         };
                     }
@@ -961,37 +763,54 @@ namespace LTF_Teleport
                             defaultDesc = "c:" + currentCooldown,
                             action = delegate
                             {
-                                FullHax(currentCooldown, 0);
+                                ResetCooldown();
                             }
                         };
                     }
 
-                    if(gfxDebug)
-                    yield return new Command_Action
+                    if (gfxDebug)
+                    {
+                        yield return new Command_Action
                         {
-                            defaultLabel = "gfx vanish",
-                        action = delegate
+                            defaultLabel = "vanish "+ drawVanish + "->" + !drawVanish,
+                            action = delegate
                             {
-                                ToggleForceDrawVanish();
+                                drawVanish = !drawVanish;
                             }
                         };
+                        yield return new Command_Action
+                        {
+                            defaultLabel = "under "+drawUnderlay+"->"+!drawUnderlay,
+                            action = delegate
+                            {
+                                drawUnderlay = !drawUnderlay;
+                            }
+                        };
+                        yield return new Command_Action
+                        {
+                            defaultLabel = "over " + drawOverlay + "->" + !drawOverlay,
+                            action = delegate
+                            {
+                                drawOverlay = !drawOverlay;
+                            }
+                        };
+                    }
+                    
 
                     yield return new Command_Action
                     {
-                        defaultLabel = "gfx Debug",
-                        defaultDesc = "gd:" + gfxDebug,
+                        defaultLabel = "gfx Debug"+gfxDebug+"->"+!gfxDebug,
                         action = delegate
                         {
-                            ToggleGfxDebug();
+                            gfxDebug = !gfxDebug;
                         }
                     };
                     yield return new Command_Action
                     {
-                        defaultLabel = "prc Debug",
-                        defaultDesc = "pd:" + prcDebug,
+                        defaultLabel = "prc Debug" + prcDebug + "->" + !prcDebug,
                         action = delegate
                         {
-                            TogglePrcDebug();
+                            prcDebug =! prcDebug;
                         }
                     };
 
