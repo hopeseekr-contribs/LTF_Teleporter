@@ -45,18 +45,21 @@ namespace LTF_Teleport
 
         //'nothing':'white','pawn':'yellow','item':'magenta',
         //'nothing':'white','pawn':'yellow','item':'magenta',
-        public static readonly Material EmptyTile = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Transparent);
+        public static readonly Material EmptyTile = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.MoteGlow);
+       // public static readonly Material EmptyTile = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Transparent);
+        public static readonly Material ItemTile = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.MoteGlow, Color.blue);
+        public static readonly Material PawnTile = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Transparent, Color.red);
+        /*
         public static readonly Material PawnOverTile = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Transparent, Color.blue);
         public static readonly Material ItemOverTile = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Cutout, Color.red);
-
+        */
+        /*
         public static readonly Material RedPixel = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.VertexColor, Color.red);
         public static readonly Material CyanPixel = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.VertexColor, Color.cyan);
         public static readonly Material YellowPixel = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.VertexColor, Color.yellow);
         public static readonly Material MagentaPixel = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.VertexColor, Color.magenta);
-
+        */
         public static readonly Graphic Vanish = GraphicDatabase.Get<Graphic_Slideshow>(overlayPath + "Vanish", ShaderDatabase.MetaOverlay);
-
-
         private static float UpdateOpacity(Thing thing, OpacityWay opacityWay = OpacityWay.no, float opacity=1, bool debug=false)
         {
             float newOpacity = -1;
@@ -88,8 +91,9 @@ namespace LTF_Teleport
         }
 
         public static void DrawPulse(
-            Thing thing, Material mat, Mesh mesh, 
-            Layer myLayer = Layer.over, OpacityWay opacityWay = OpacityWay.no,
+            Thing thing, Material mat, Mesh mesh,
+            Layer myLayer = Layer.over, 
+            OpacityWay opacityWay = OpacityWay.no,
             bool debug = false )
         {
             float myOpacity = UpdateOpacity(thing, opacityWay, 1, debug);
@@ -109,11 +113,24 @@ namespace LTF_Teleport
             if (debug)
                 Log.Warning(
                     thing.LabelShort +
-                    " opa:" + myOpacity +
-                    " pos:" + gfxPos
+                    "; opa: " + myOpacity +
+                    "; pos: " + gfxPos +
+                    "; col: " + mat.color
                     );
         }
+        public void DrawColorPulse(Thing thing, Material mat, Vector3 drawPos, Mesh mesh, Color color)
+        {
+            float myOpacity = PulseOpacity(thing);
+            Material material = FadedMaterialPool.FadedVersionOf(mat, myOpacity);
+            ChangeColor(mat, color, myOpacity);
 
+            Vector3 dotS = new Vector3(1f, 1f, 1f);
+            Matrix4x4 matrix = default(Matrix4x4);
+
+            matrix.SetTRS(drawPos, Quaternion.AngleAxis(0f, Vector3.up), dotS);
+
+            Graphics.DrawMesh(mesh, matrix, material, 0);
+        }
         private void Draw1x1Overlay(Vector3 buildingPos, Material gfx, Mesh mesh, float drawSize, bool debug)
         {
             Vector3 dotS = new Vector3(drawSize, 1f, drawSize);
@@ -185,14 +202,25 @@ namespace LTF_Teleport
                 Log.Warning("Drew:" + newColor);
         }
 
-        private void ChangeColor(Material mat, Color color, float opacity)
+        public static void ChangeColor(Material mat, Color color, float opacity=-1, bool debug=false)
         {
             Color newColor = color;
 
-            newColor.a = opacity;
+            if (debug)
+                Log.Warning("In Color: " + mat.color);
 
+            if (opacity == -1)
+            {
+
+                newColor.a = Tools.LimitToRange(mat.color.a, 0, 1);
+            }
+            newColor.a = opacity;
             mat.color = newColor;
+
+            if (debug)
+                Log.Warning("Out Color: " + mat.color);
         }
+
         public static float PulseOpacity(Thing thing)
         {
             float num = (Time.realtimeSinceStartup + 397f * (float)(thing.thingIDNumber % 571)) * 4f;
@@ -209,19 +237,8 @@ namespace LTF_Teleport
 
             return num2;
         }
-        public void DrawColorPulse(Thing thing, Material mat, Vector3 drawPos, Mesh mesh, Color color)
-        {
-            float myOpacity = PulseOpacity(thing);
-            Material material = FadedMaterialPool.FadedVersionOf(mat, myOpacity);
-            ChangeColor(mat, color, myOpacity);
 
-            Vector3 dotS = new Vector3(1f, 1f, 1f);
-            Matrix4x4 matrix = default(Matrix4x4);
 
-            matrix.SetTRS(drawPos, Quaternion.AngleAxis(0f, Vector3.up), dotS);
-
-            Graphics.DrawMesh(mesh, matrix, material, 0);
-        }
         public class Graphic_Slideshow : Graphic_Collection
         {
             private const int BaseTicksPerFrameChange = 20;
@@ -327,6 +344,7 @@ namespace LTF_Teleport
 
                 return tpSpot;
             }
+            
             private void Unset()
             {
                 //willDrawNextTick = false;

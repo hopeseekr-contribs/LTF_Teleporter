@@ -17,16 +17,25 @@ namespace LTF_Teleport
     {
         
         //Building dependencies
-        public static bool CheckPower(Building building, CompPowerTrader comp=null)
+        public static bool CheckPower(Building building)
         {
-            if (comp==null)
-                comp = building?.TryGetComp<CompPowerTrader>();
+            CompPowerTrader comp = null;
+            comp = building?.TryGetComp<CompPowerTrader>();
 
             if (comp == null || !comp.PowerOn)
                 return false;
 
             return true;
         }
+
+        public static bool CheckPower(CompPowerTrader comp)
+        {
+            if (comp == null || !comp.PowerOn)
+                return false;
+
+            return true;
+        }
+
         public static bool CheckBuilding(Building building)
         {
             if (building == null || building.Map == null)
@@ -38,14 +47,18 @@ namespace LTF_Teleport
         {
             bool Answer = true;
 
-            if (comp == null) {
-                comp = facility?.TryGetComp<CompPowerTrader>();
-                if (debug)
-                    Log.Warning("tried to find facility power");
-            }
+            if (debug)
+                Log.Warning("tick check facility");
 
             Answer &= CheckBuilding(facility);
-            Answer &= CheckPower(facility, comp);
+
+            if (comp == null) {
+                Answer &= CheckPower(facility);
+            }
+            else
+            {
+                Answer &= CheckPower(comp);
+            }
 
             if (!Answer)
             {
@@ -68,18 +81,18 @@ namespace LTF_Teleport
                 return null;
             }
 
-            if(comp == null)
-                comp = building?.TryGetComp<CompAffectedByFacilities>();
+            if(compFacility == null)
+                compFacility = building?.TryGetComp<CompAffectedByFacilities>();
 
             //Log.Warning("Trying to set facility");
-            if (comp == null)
+            if (compFacility == null)
             {
                 if (debug)
                     Log.Warning("facility comp err");
                 return null;
             }
 
-            if (comp.LinkedFacilitiesListForReading.NullOrEmpty())
+            if (compFacility.LinkedFacilitiesListForReading.NullOrEmpty())
             {
                 if (debug)
                     Log.Warning("no facility found");
@@ -87,7 +100,7 @@ namespace LTF_Teleport
             }
 
             Thing thing = null;
-            thing = comp.LinkedFacilitiesListForReading.RandomElement();
+            thing = compFacility.LinkedFacilitiesListForReading.RandomElement();
 
             if (thing == null)
             {
@@ -107,11 +120,19 @@ namespace LTF_Teleport
                 return null;
             }
 
-            if (!CheckPower(facility))
+            if (compFacilityPower != null)
             {
-                if (debug)
-                    Log.Warning("facility has no power");
+
             }
+            else
+            {
+                if (!CheckPower(facility))
+                {
+                    if (debug)
+                        Log.Warning("facility has no power");
+                }
+            }
+            
 
             Answer = facility;
             return Answer;

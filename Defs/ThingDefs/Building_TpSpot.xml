@@ -86,7 +86,7 @@ Requires a teleport bench.</description>
     <comps>
 	<li Class="CompProperties_Power">
 		<compClass>CompPowerTrader</compClass>
-		<basePowerConsumption>250</basePowerConsumption>
+		<basePowerConsumption>120</basePowerConsumption>
 		<startElectricalFires>true</startElectricalFires>
 	</li>
 	

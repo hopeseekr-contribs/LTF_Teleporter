@@ -499,48 +499,66 @@ namespace LTF_Teleport
                 return;
             }
 
-            //Color overlayColor = Color.white;
+            Color overlayColor = Color.white;
+            /*
             Material overlay = Gfx.MagentaPixel;
             Material underlay = Gfx.MagentaPixel;
+            */
+            Material overlay = Gfx.EmptyTile;
+            //Material overlay = Gfx.aze;
+            Gfx.OpacityWay opacityWay = Gfx.OpacityWay.no;
 
+           // Material overlay = Gfx.MagentaPixel;
             string checkIf = string.Empty;
 
             // Nothing on tile
             if (StatusNoItem)
             {
-                overlay = Gfx.EmptyTile;
+             //   overlay = Gfx.EmptyTile;
                 //                overlay = PoweredGfx;
                 checkIf = "nothing gfx";
+                opacityWay = Gfx.OpacityWay.loop;
             }
             // something over building
             else
             {
+                opacityWay = Gfx.OpacityWay.pulse;
+
                 if (HasRegisteredPawn)
                 {
+                    overlay = Gfx.PawnTile;
                     //overlayColor = Color.yellow;
+                    /*
                     underlay = Gfx.YellowPixel;
                     overlay = Gfx.PawnOverTile;
+                    */
                     checkIf = "pawn gfx";
+                    
                 }
                 else
                 {
+                    overlay = Gfx.ItemTile;
                     //overlayColor = Color.magenta;
+                    /*
                     underlay = Gfx.CyanPixel;
                     overlay = Gfx.ItemOverTile;
+                    */
                     checkIf = "object gfx";
                 }
             }
 
             if (gfxDebug) Log.Warning(checkIf);
-
+            //Gfx.ChangeColor(overlay, overlayColor, -1);
             // Underlay if item
+            /*
             if (StatusHasItem)
                 if (drawUnderlay)
                     Gfx.DrawPulse(parent, underlay, MeshPool.plane10, Gfx.Layer.under, Gfx.OpacityWay.loop, gfxDebug);
+            */
 
             // Overlay
             if (drawOverlay)
-                Gfx.DrawPulse(parent, overlay, MeshPool.plane10, Gfx.Layer.over, Gfx.OpacityWay.pulse, gfxDebug);
+                Gfx.DrawPulse(parent, overlay, MeshPool.plane10, Gfx.Layer.over, opacityWay, gfxDebug);
 
             //DrawColorPulse(parent, overlay, buildingPos, mesh1x1, overlayColor);
             //Gfx.DrawPulse(parent, overlay, MeshPool.plane10, gfxDebug);
@@ -572,7 +590,7 @@ namespace LTF_Teleport
             compAffectedByFacilities = building?.TryGetComp<CompAffectedByFacilities>();
 
             if ((building != null) && (compAffectedByFacilities != null))
-                facility = Dependencies.GetFacility(building, compAffectedByFacilities, prcDebug);
+                facility = Dependencies.GetPoweredFacility(building, compAffectedByFacilities, compPowerFacility, prcDebug);
 
             compPowerFacility = facility?.TryGetComp<CompPowerTrader>();
 
@@ -604,7 +622,7 @@ namespace LTF_Teleport
                 if (StatusNoFacility)
                 {
                     tellMe += "no facility; ";
-                    facility = Dependencies.GetFacility(building, compAffectedByFacilities, prcDebug);
+                    facility = Dependencies.GetPoweredFacility(building, compAffectedByFacilities, compPowerFacility, prcDebug);
                     if (HasRegisteredFacility)
                     {
                         tellMe += "but found" + facility.LabelShort;
