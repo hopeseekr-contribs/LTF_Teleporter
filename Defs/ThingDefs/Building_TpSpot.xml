@@ -80,8 +80,7 @@ Requires a teleport bench.</description>
 			<Uranium>5</Uranium>
 			<Component>2</Component>
 		</costList>
-	    <constructEffect>ConstructDirt</constructEffect>
-		<repairEffect>ConstructDirt</repairEffect>
+
     <comps>
 	<li Class="CompProperties_Power">
 		<compClass>CompPowerTrader</compClass>
