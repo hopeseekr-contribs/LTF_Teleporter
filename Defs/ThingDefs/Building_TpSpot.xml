@@ -37,7 +37,8 @@ Requires a teleport bench.</description>
     <size>(1,1)</size>
 	
 	<!-- <clearBuildingArea>false</clearBuildingArea> -->
-	<rotatable>True</rotatable>
+	<rotatable>true</rotatable>
+	<stealable>false</stealable>
     <defaultPlacingRot>North</defaultPlacingRot>
 	
     <designationCategory>Security</designationCategory>
@@ -51,14 +52,14 @@ Requires a teleport bench.</description>
 		<sowTag>SupportPlantsOnly</sowTag>
 		<canPlaceOverImpassablePlant>false</canPlaceOverImpassablePlant>
 		
-		<ai_chillDestination>false</ai_chillDestination>
+		<ai_chillDestination>true</ai_chillDestination>
 		<isEdifice>false</isEdifice>
-		
 		<preventDeteriorationOnTop>false</preventDeteriorationOnTop>
-		<ignoreStoredThingsBeauty>true</ignoreStoredThingsBeauty>
 		
+		<ignoreStoredThingsBeauty>true</ignoreStoredThingsBeauty>
+		<isInert>true</isInert>
 		<defaultStorageSettings>
-			<priority>Important</priority>
+			<priority>Normal</priority>
 			<filter>
 				<categories>
 					<li>Weapons</li>
@@ -66,23 +67,21 @@ Requires a teleport bench.</description>
 			</filter>
 		</defaultStorageSettings>
 	</building>
+		
+		<inspectorTabs><li>ITab_Storage</li></inspectorTabs>
+		<!-- <li>ITab_Bills</li> -->
 	
-	<inspectorTabs>
-		<li>ITab_Storage</li>
-	</inspectorTabs>
-			<!-- <li>ITab_Bills</li> -->
-	
-		    <stuffCategories>
+		<stuffCategories>
 			<li>Metallic</li>
 		</stuffCategories>
-		
 		<costStuffCount>150</costStuffCount>
 		<costList>
 			<Steel>50</Steel>
 			<Uranium>5</Uranium>
 			<Component>2</Component>
 		</costList>
-	
+	    <constructEffect>ConstructDirt</constructEffect>
+		<repairEffect>ConstructDirt</repairEffect>
     <comps>
 	<li Class="CompProperties_Power">
 		<compClass>CompPowerTrader</compClass>
@@ -91,7 +90,7 @@ Requires a teleport bench.</description>
 	</li>
 	
 	<li Class="CompProperties_Flickable"/>
-	
+	<li Class="CompProperties_Breakdownable"/>
 	<!-- <li><compClass>CompQuality</compClass></li> -->
 	
 	<li Class="CompProperties_AffectedByFacilities">

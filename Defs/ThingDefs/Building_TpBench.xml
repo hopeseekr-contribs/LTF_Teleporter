@@ -80,7 +80,8 @@
 				<statOffsets>
 					<MarketValue>0.25</MarketValue>
 				</statOffsets>
-				<maxSimultaneous>4</maxSimultaneous>
+				<maxSimultaneous>1</maxSimultaneous>
+				<maxDistance>3</maxDistance>
 			</li>
 		</comps>
 		

@@ -47,12 +47,12 @@ namespace LTF_Teleport
 
         /* Production */
         /******************/
-        List<Thing> tpThingList = new List<Thing>();
+        List<Thing> ThingList = new List<Thing>();
         // Can be a dead animal
         Building facility = null;
         Pawn standingUser = null;
         [Flags]
-        enum BuildingStatus
+        public enum BuildingStatus
         {
             na          =0,
 
@@ -97,6 +97,7 @@ namespace LTF_Teleport
             capable=64,
         };
 
+        bool FactionMajority = false;
 
         public bool drawVanish = false;
         public bool drawUnderlay = true;
@@ -106,7 +107,7 @@ namespace LTF_Teleport
         /**********/
         public bool gfxDebug = false;
         public bool prcDebug = false;
-
+        private bool Hax = false;
 
         // Props
         public CompProperties_LTF_TpSpot Props
@@ -117,33 +118,20 @@ namespace LTF_Teleport
             }
         }
 
-        // Dependency : Weight 
-        private void ResetWeight()
+        // Interface quality
+        private void ChangeQuality(bool better = true)
         {
-            Tools.CapacityReset(currentWeight);
+            ToolsQuality.ChangeQuality(building, compQuality, better);
+            SetCooldownBase();
+            currentCooldown = Mathf.Min(cooldownBase, currentCooldown);
         }
-        private void MoreWeight(Thing thing)
+        private void BetterQuality()
         {
-            ChangeWeight(thing);
+            ChangeQuality(true);
         }
-        private void ChangeWeight(Thing thing, bool addWeight = true)
+        private void WorseQuality()
         {
-            float newWeight = thing.GetStatValue(StatDefOf.Mass, true);
-            int plusOrMinus = ((addWeight) ? (1) : (-1));
-
-            currentWeight += plusOrMinus * newWeight;
-            
-            currentWeight = Tools.LimitToRange(currentWeight, 0, 3000);
-            currentWeight = (float)Math.Round((Decimal)currentWeight, 2, MidpointRounding.AwayFromZero);
-
-            if(prcDebug)
-                Log.Warning(thing.LabelShort + " adds(" + plusOrMinus + ")" + newWeight + " -> " + currentWeight);
-        }
-
-
-        private void SetWeightBase(CompQuality comp = null)
-        {
-            weightCapacity = Tools.WeightedCapacity(Props.weightBase, Props.weightSpectrum, comp);
+            ChangeQuality(false);
         }
 
         //Dependency :Cooldown
@@ -164,20 +152,24 @@ namespace LTF_Teleport
         {
             currentCooldown=cooldownBase;
         }
+        private void SetCooldown(float value)
+        {
+            currentCooldown = value;
+        }
 
         //Dependency : facility
-        private bool HasRegisteredFacility
+        public bool HasRegisteredFacility
         {
             get
             {
                 return (facility != null);
             }
         }
-        private bool HasPoweredFacility
+        public bool HasPoweredFacility
         {
             get
             {
-                return (Dependencies.TickCheckFacility(facility, compPowerFacility, prcDebug));
+                return (Dependencies.TickCheckFacilityPower(facility, compPowerFacility, prcDebug));
             }
         }
         private void ResetFacility()
@@ -186,52 +178,42 @@ namespace LTF_Teleport
         }
 
         // Check local tile
-        // Items
-        public int RegisteredCount
-        {
-            get
-            {
-                return tpThingList.Count;
-            }
-        }
-        protected bool HasRegisteredItems
-        {
-            get
-            {
-                return !tpThingList.NullOrEmpty();
-            }
-        }
+        // Items set
         private void ResetItems()
         {
-            tpThingList.Clear();
+            ThingList.Clear();
             ResetWeight();
         }
         private bool RemoveItemsIfAbsent()
         {
 
-            if (!HasRegisteredItems)
+            if (HasNothing)
                 return false;
 
+            int neededAverageFaction = (int)(ThingList.Count / 2);
 
-            //Log.Warning(building.Label + " checks history");
-            //for (int i = 0; i < tpThingList.Count; i++)
-            for (int i = tpThingList.Count - 1; i >= 0; i--)
+            //Tools.Warn(building.Label + " checks history");
+            //for (int i = 0; i < ThingList.Count; i++)
+            for (int i = ThingList.Count - 1; i >= 0; i--)
             {
                 Thing thing = null;
-                thing = tpThingList[i];
+                thing = ThingList[i];
                 if (thing == null)
                 {
-                    Log.Warning("lol what");
+                    Tools.Warn("lol what", prcDebug);
                     continue;
                 }
+
+                if (thing.Faction == Faction.OfPlayer)
+                    neededAverageFaction -= 1;
 
                 Pawn pawn = thing as Pawn;
                 if ((pawn != null) && (standingUser != null))
                 {
-                    //Log.Warning(building.Label + " concerned about pawns");
+                    //Tools.Warn(building.Label + " concerned about pawns");
                     if ((pawn != standingUser) || (pawn.Position != building.Position))
                     {
-                        //Log.Warning(" reseting bc he left  or someone" + standingUser.LabelShort);
+                        //Tools.Warn(" reseting bc he left  or someone" + standingUser.LabelShort);
                         ResetPawn();
                     }
                 }
@@ -239,25 +221,25 @@ namespace LTF_Teleport
                 if (thing.Position != building.Position)
                 {
                     RemoveItem(thing);
-                    tpThingList.Remove(thing);
+                    ThingList.Remove(thing);
                 }
             }
 
-            return (HasRegisteredItems);
+            FactionMajority=(neededAverageFaction <= 0) ;
+
+            return (HasItems);
         }
         private void AddItem(Thing thing)
         {
-            if (prcDebug)
-                Log.Warning("Adding " + thing.Label + " to " + building.Label);
+                Tools.Warn("Adding " + thing.Label + " to " + building.Label, prcDebug);
 
-            tpThingList.Add(thing);
+            ThingList.Add(thing);
         }
         private void RemoveItem(Thing thing)
         {
-            if (prcDebug)
-                Log.Warning("Removing " + thing.Label + " from " + building.Label);
+                Tools.Warn("Removing " + thing.Label + " from " + building.Label, prcDebug);
 
-            tpThingList.Remove(thing);
+            ThingList.Remove(thing);
         }
         private bool CheckNewItems()
         {
@@ -274,51 +256,45 @@ namespace LTF_Teleport
         }
         private bool AddSpotItems(List<Thing> allThings, bool clearIfEmpty = true)
         {
-            //Log.Warning(building.Label+" checking items");
-            //if (CheckNothing(building.Position.GetThingList(building.Map)))
-            if (CheckNothing(allThings))
-            {
-                if (clearIfEmpty)
-                    ResetItems();
-
-                return false;
-            }
+            Tools.Warn(building.Label+" checking items", prcDebug);
 
             Thing thing = null;
             bool found = false;
             int pawnN = 0;
 
             Pawn passenger = null;
-
-            if (prcDebug)
-                Log.Warning(building.Label + ":" + allThings.Count);
+            Tools.Warn(building.Label + ":" + allThings.Count, prcDebug);
 
             for (int i = 0; i < allThings.Count; i++)
             {
-
                 thing = allThings[i];
                 if (thing != null)
                 {
                     //Projectile projectile = thing as Projectile;
-                    Pawn pawn = thing as Pawn;
                     // Can have 2 buildings, there if myself != null, myself=parent => idgaf
-                    Building myself = thing as Building;
-
-                    //if ((thing.def.mote != null || thing.def.IsFilth || projectile != null || myself != null))
-                    if ((thing.def.mote != null || thing.def.IsFilth || myself != null))
+                    if ((thing.def.mote != null )|| thing.def.IsFilth)
+                    {
+                        Tools.Warn("mote or filth skip", prcDebug);
                         continue;
-
+                    }
+                    Building myself = thing as Building;
+                    if ((myself != null) && (myself == building))
+                    {
+                        Tools.Warn("Wont self register", prcDebug);
+                        continue;
+                    }
+                    Pawn pawn = thing as Pawn;
                     if (pawn != null)
                     {
                         passenger = pawn;
                         pawnN += 1;
                     }
 
-                    if (!tpThingList.Contains(thing))
+                    if (!ThingList.Contains(thing))
                     {
                         AddItem(thing);
-                        if (prcDebug)
-                            Log.Warning(thing.Label + " added");
+                        
+                            Tools.Warn(thing.Label + " added", prcDebug);
                     }
 
                     found = true;
@@ -333,14 +309,14 @@ namespace LTF_Teleport
             {
                 ResetPawn();
                 ResetItems();
-                //tpThingList.Clear();
-                //Log.Warning("More than 1 pawn. Cant.");
+                //ThingList.Clear();
+                //Tools.Warn("More than 1 pawn. Cant.");
             }
             else
             {
                 SetPawn(passenger);
-                if (prcDebug)
-                    Log.Warning(passenger.LabelShort + " added");
+
+                    Tools.Warn(passenger.LabelShort + " added", prcDebug);
             }
 
             if (!found)
@@ -350,13 +326,54 @@ namespace LTF_Teleport
 
             return found;
         }
-        private bool CheckThingPresent(List<Thing> all)
+
+        // Items Status
+        public int RegisteredCount
         {
-            return (!CheckNothing(all));
+            get
+            {
+                return ThingList.Count;
+            }
         }
-        private bool CheckNothing(List<Thing> all)
+        public bool HasItems
         {
-            return (all.NullOrEmpty());
+            get
+            {
+                return !ThingList.NullOrEmpty();
+            }
+        }
+        public bool HasNothing
+        {
+            get
+            {
+                return (!HasItems);
+            }
+        }
+
+        // Dependency : Weight 
+        private void ResetWeight()
+        {
+            Tools.CapacityReset(currentWeight);
+        }
+        private void MoreWeight(Thing thing)
+        {
+            ChangeWeight(thing);
+        }
+        private void ChangeWeight(Thing thing, bool addWeight = true)
+        {
+            float newWeight = thing.GetStatValue(StatDefOf.Mass, true);
+            int plusOrMinus = ((addWeight) ? (1) : (-1));
+
+            currentWeight += plusOrMinus * newWeight;
+
+            currentWeight = Tools.LimitToRange(currentWeight, 0, 3000);
+            currentWeight = (float)Math.Round((Decimal)currentWeight, 2, MidpointRounding.AwayFromZero);
+
+            Tools.Warn(thing.LabelShort + " adds(" + plusOrMinus + ")" + newWeight + " -> " + currentWeight, prcDebug);
+        }
+        private void SetWeightBase(CompQuality comp = null)
+        {
+            weightCapacity = Tools.WeightedCapacity(Props.weightBase, Props.weightSpectrum, comp);
         }
 
         // Special Item : pawn
@@ -368,13 +385,37 @@ namespace LTF_Teleport
         {
             SetPawn();
         }
-        private bool HasRegisteredPawn
+
+        // Pawns status
+        public bool HasRegisteredPawn
         {
             get
             {
-                return (standingUser != null);
+                return (standingUser != null) ;
             }
         }
+        public bool HasAnimal
+        {
+            get
+            {
+                return (HasRegisteredPawn && (!standingUser.RaceProps.Humanlike) && (!standingUser.RaceProps.IsMechanoid) );
+            }
+        }
+        public bool HasMechanoid
+        {
+            get
+            {
+                return (HasRegisteredPawn && (standingUser.RaceProps.IsMechanoid));
+            }
+        }
+        public bool HasHumanoid
+        {
+            get
+            {
+                return (HasRegisteredPawn && (!HasAnimal));
+            }
+        }
+        
 
         //Gfx interface
         public void StopVanish()
@@ -386,12 +427,12 @@ namespace LTF_Teleport
         // Debug 
         private void DumpProps(float val1, float val2, string myString = "bla: ")
         {
-            Log.Warning(myString + val1 + " / " + val2);
+            Tools.Warn(myString + val1 + " / " + val2, prcDebug);
         }
         private string DumpList()
         {
             string bla = String.Empty;
-            foreach (Thing item in tpThingList)
+            foreach (Thing item in ThingList)
             {
                 bla += item.Label + ";";
             }
@@ -399,19 +440,19 @@ namespace LTF_Teleport
         }
 
         // Status management
-        private BuildingStatus TeleportCapable
+        public BuildingStatus TeleportCapable
         {
             get
             {
                 BuildingStatus Answer = BuildingStatus.na;
 
-                if (!Dependencies.CheckPower(building))
+                if (!ToolsBuilding.CheckPower(building))
                     Answer ^= BuildingStatus.noPower;
 
                 if (!HasRegisteredFacility)
                     Answer ^= BuildingStatus.noFacility;
 
-                if (!HasRegisteredItems)
+                if (HasNothing)
                     Answer ^= BuildingStatus.noItem;
 
                 if (Tools.CapacityOverusing(currentWeight, weightCapacity))
@@ -427,12 +468,12 @@ namespace LTF_Teleport
             }
         }
         private bool HasStatus(BuildingStatus buildingStatus) { return ((TeleportCapable & buildingStatus) != 0); }
-        private bool StatusNoPower { get { return HasStatus(BuildingStatus.noPower); } }
-        private bool StatusNoFacility { get { return HasStatus(BuildingStatus.noFacility); } }
+        public bool StatusNoPower { get { return HasStatus(BuildingStatus.noPower); } }
+        public bool StatusNoFacility { get { return HasStatus(BuildingStatus.noFacility); } }
         private bool StatusNoItem { get { return HasStatus(BuildingStatus.noItem); } }
         private bool StatusHasItem { get { return !StatusNoItem; } }
-        private bool StatusOverweight { get { return HasStatus(BuildingStatus.overweight); } }
-        private bool StatusChillin { get { return HasStatus(BuildingStatus.cooldown); } }
+        public bool StatusOverweight { get { return HasStatus(BuildingStatus.overweight); } }
+        public bool StatusChillin { get { return HasStatus(BuildingStatus.cooldown); } }
         private bool StatusReady { get { return HasStatus(BuildingStatus.capable); } }
         string StatusExplanation()
         {
@@ -440,33 +481,33 @@ namespace LTF_Teleport
 
             if (StatusNoPower)
             {
-                bla += "No power; ";
+                bla += " No power;";
                 return bla;
             }
             if (StatusNoFacility)
             {
-                bla += "No facility; ";
+                bla += " No facility;";
                 return bla;
             }
 
             if (StatusOverweight)
             {
-                bla += currentWeight + "kg. >" + weightCapacity + " kg. ";
+                bla += ' '+currentWeight + "kg. >" + weightCapacity + " kg.";
             }
             if (StatusChillin)
             {
                 float coolPerc = currentCooldown / cooldownBase;
-                bla += "Cooldown: " + coolPerc.ToStringPercent("F0")+" ";
+                bla += " Cooldown: " + coolPerc.ToStringPercent("F0");
             }
             if (StatusNoItem)
             {
-                bla += "Nothing. ";
+                bla += " Nothing.";
             }
 
             if (StatusReady)
             {
                 int itemCount = RegisteredCount;
-                bla += RegisteredCount + " item" + ((RegisteredCount > 1) ? ("s") : ("")) + ". " + currentWeight + " kg. Max: " + weightCapacity + " kg. ";
+                bla += ' '+RegisteredCount + " item" + ((RegisteredCount > 1) ? ("s") : ("")) + ". " + currentWeight + " kg. Max: " + weightCapacity + " kg.";
             }
 
             bla=bla.Trim();
@@ -481,187 +522,151 @@ namespace LTF_Teleport
 
             if (buildingPos == null)
             {
-                Log.Warning("null pos draw");
+                Tools.Warn("null pos draw", gfxDebug);
                 return;
             }
-
             if (building.Rotation != Rot4.North)
             {
-                Log.Warning("Rotation");
+                Tools.Warn("Rotation", gfxDebug);
                 return;
             }
-
             // nothing there standing
-            if (StatusNoFacility || StatusNoPower)
+            if (StatusNoPower)
             {
-                if (gfxDebug)
-                    Log.Warning(buildingName + " Nothing to draw: " + TeleportCapable);
+                Tools.Warn(buildingName + " Nothing to draw: " + TeleportCapable, gfxDebug);
                 return;
             }
 
-            Color overlayColor = Color.white;
-            /*
-            Material overlay = Gfx.MagentaPixel;
-            Material underlay = Gfx.MagentaPixel;
-            */
-            Material overlay = Gfx.EmptyTile;
-            //Material overlay = Gfx.aze;
-            Gfx.OpacityWay opacityWay = Gfx.OpacityWay.no;
+            Tools.Warn(
+                " pulse: " + Gfx.PulseFactorOne(parent) * 360 +
+                "; Loop: " + Gfx.LoopFactorOne(parent) * 360 +
+                "; %real:" + (Gfx.RealLinear(parent, currentWeight, 1, gfxDebug) * 360)
+                , gfxDebug);
+            
 
-           // Material overlay = Gfx.MagentaPixel;
-            string checkIf = string.Empty;
+            Material overlay = null;
+            Material underlay = null;
+            Material warning = null;
 
-            // Nothing on tile
-            if (StatusNoItem)
+            if(drawUnderlay)
+                underlay = MyGfx.Status2UnderlayMaterial(this, gfxDebug);
+
+            if (drawOverlay)
             {
-             //   overlay = Gfx.EmptyTile;
-                //                overlay = PoweredGfx;
-                checkIf = "nothing gfx";
-                opacityWay = Gfx.OpacityWay.loop;
-            }
-            // something over building
-            else
-            {
-                opacityWay = Gfx.OpacityWay.pulse;
-
-                if (HasRegisteredPawn)
+                if(StatusReady)
                 {
-                    overlay = Gfx.PawnTile;
-                    //overlayColor = Color.yellow;
-                    /*
-                    underlay = Gfx.YellowPixel;
-                    overlay = Gfx.PawnOverTile;
-                    */
-                    checkIf = "pawn gfx";
-                    
+                    //Tools.Warn("gfx : : :::::::: Ready", gfxDebug);
+                    overlay = MyGfx.Status2OverlayMaterial(this, FactionMajority, gfxDebug);
                 }
                 else
                 {
-                    overlay = Gfx.ItemTile;
-                    //overlayColor = Color.magenta;
-                    /*
-                    underlay = Gfx.CyanPixel;
-                    overlay = Gfx.ItemOverTile;
-                    */
-                    checkIf = "object gfx";
+                    //Tools.Warn("gfx: : ::::: :::::: not readdyyyyy ffs", gfxDebug);
+                    warning = MyGfx.Status2WarningMaterial(this, gfxDebug);
                 }
             }
 
-            if (gfxDebug) Log.Warning(checkIf);
-            //Gfx.ChangeColor(overlay, overlayColor, -1);
-            // Underlay if item
-            /*
-            if (StatusHasItem)
-                if (drawUnderlay)
-                    Gfx.DrawPulse(parent, underlay, MeshPool.plane10, Gfx.Layer.under, Gfx.OpacityWay.loop, gfxDebug);
-            */
+            //MyGfx.OpacityWay opacityWay = MyGfx.OpacityWay.no;
 
-            // Overlay
+            // Underlay
+            float underlayAngle = ((!HasItems) ? Gfx.RealLinear(parent, 1, 10+Rand.Range(0,3), gfxDebug) : (Gfx.PulseFactorOne(parent) ));
+            if (drawUnderlay && underlay != null)
+                Gfx.DrawTickRotating(parent, underlay, 0, 0, underlayAngle * 360, 1, Gfx.Layer.under, gfxDebug);
+            //Gfx.DrawTickRotating(parent, underlay, 0, 0, underlayAngle*360, Gfx.VanillaPulse(parent),Gfx.Layer.under, gfxDebug);
+            //    Gfx.DrawPulse(parent, underlay, MeshPool.plane10, Gfx.Layer.under, Gfx.OpacityWay.loop, gfxDebug);
+
+
+            //Gfx.DrawRandRotating(parent, underlay, 0, 0, Gfx.Layer.under, gfxDebug);
+
+            //Overlay
             if (drawOverlay)
-                Gfx.DrawPulse(parent, overlay, MeshPool.plane10, Gfx.Layer.over, opacityWay, gfxDebug);
+            {
+                if (!StatusReady && warning != null)
+                    Gfx.PulseWarning(building, warning);
 
-            //DrawColorPulse(parent, overlay, buildingPos, mesh1x1, overlayColor);
-            //Gfx.DrawPulse(parent, overlay, MeshPool.plane10, gfxDebug);
-
-            //ChangeColor(overlay, overlayColor, PulseOpacity(parent));
-            // Gfx.Draw1x1Overlay(buildingPos, overlay, mesh1x1, 1);
-            //Draw1x1Overlay( buildingPos, overlay, mesh1x1, 0, 0, myColor, randRot, flick, oscil, noFlickChance, minOpacity, maxOpacity);
+                if (StatusHasItem && overlay != null)
+                    Gfx.DrawTickRotating(parent, overlay, 0, 0, Gfx.LoopFactorOne(parent)*360, 1, Gfx.Layer.over, gfxDebug);
+            }
 
             if (drawVanish)
             {
                 Vector3 drawPos = this.parent.DrawPos;
-                Gfx.Vanish.Draw(drawPos, Rot4.North, this.parent, 0f);
+                MyGfx.Vanish.Draw(drawPos, Rot4.North, this.parent, 0f);
             }
         }
-
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
+            //Building
             building = (Building)parent;
-
             buildingPos = building.DrawPos;
             buildingName = building?.LabelShort;
-
+            //Building comp
             compPowerTrader = building?.TryGetComp<CompPowerTrader>();
-
             compQuality = building?.TryGetComp<CompQuality>();
-            SetWeightBase(compQuality);
-            SetCooldownBase(compQuality);
+            compAffectedByFacilities = ToolsBuilding.GetAffectedComp(building, prcDebug);
 
-            compAffectedByFacilities = building?.TryGetComp<CompAffectedByFacilities>();
-
-            if ((building != null) && (compAffectedByFacilities != null))
-                facility = Dependencies.GetPoweredFacility(building, compAffectedByFacilities, compPowerFacility, prcDebug);
-
+            //Facility
+            facility = ToolsBuilding.GetFacility( compAffectedByFacilities,  prcDebug);
+            //Facility power comp
             compPowerFacility = facility?.TryGetComp<CompPowerTrader>();
 
+            SetWeightBase(compQuality);
+            SetCooldownBase(compQuality);
             //DumpProps();
         }
         public override void CompTick()
         {
             base.CompTick();
 
-            if (!Dependencies.CheckBuilding(building))
+            if (!ToolsBuilding.CheckBuilding(building))
             {
-                Log.Warning("Impossibru");
+                Tools.Warn("comp building not legit", prcDebug);
                 return;
             }
 
             string tellMe = string.Empty;
-
-            tellMe = buildingName + "(" + TeleportCapable + "): ";
-
-            // Will return if status
-            //Kooo
-            if (StatusNoPower || StatusNoFacility)
-            {
-                if (StatusNoPower)
-                {
-                    tellMe += "no power; ";
-                }
-
-                if (StatusNoFacility)
-                {
-                    tellMe += "no facility; ";
-                    facility = Dependencies.GetPoweredFacility(building, compAffectedByFacilities, compPowerFacility, prcDebug);
-                    if (HasRegisteredFacility)
-                    {
-                        tellMe += "but found" + facility.LabelShort;
-                    }
-                    else
-                    {
-                        tellMe += "but cant find any";
-                    }
-                    
-                }
-                if (prcDebug)
-                    Log.Warning(tellMe);
-
+            tellMe = Tools.OkStr(StatusReady) + "[" + TeleportCapable + "]"+ buildingName + ": ";
+            
+            // Power - Will return if status
+            tellMe += "Power: " + Tools.OkStr(StatusNoPower)+"; ";
+            if (StatusNoPower) {
+                Tools.Warn(tellMe, prcDebug);
                 return;
             }
 
+            // Facility - Will return if status
+            tellMe += "Facility: " + Tools.OkStr(StatusNoFacility) + "; ";
+            if (StatusNoFacility)
+            {
+                //Facility
+                facility = ToolsBuilding.GetFacility(compAffectedByFacilities, prcDebug);
+                //Facility power comp
+                compPowerFacility = facility?.TryGetComp<CompPowerTrader>();
+                tellMe += "Found: " + Tools.OkStr(HasRegisteredFacility) + ((HasRegisteredFacility)?(facility.LabelShort) :("nothing"))+ "; ";
+            }
+            if (StatusNoFacility)
+            {
+                Tools.Warn(tellMe, prcDebug);
+                return;
+            }
+
+
             //Okk
+            tellMe += "FacilityPower: " + Tools.OkStr(HasPoweredFacility);
             if (!HasPoweredFacility)
             {
-                compPowerTrader = building?.TryGetComp<CompPowerTrader>();
-                if (compPowerTrader == null)
-                {
-                    ResetFacility();
-                    return;
-                }
+                compPowerFacility = facility?.TryGetComp<CompPowerTrader>();
+                Tools.Warn(tellMe, prcDebug);
+                return;
             }
+
+            bool belongs = Dependencies.CheckBuildingBelongsFacility(compAffectedByFacilities, facility, prcDebug);
+            tellMe += "Belongs to " + facility.Label + "?" + Tools.OkStr(belongs);
+            if (!belongs)
+                return;
+
+            
 
             CheckItems();
-
-
-                
-
-            if (StatusReady)
-            {
-                tellMe += "ready to tp " + "N:" + RegisteredCount + ":" + DumpList();
-
-                // Work here
-                //
-            }
 
             if (StatusChillin)
             {
@@ -678,17 +683,29 @@ namespace LTF_Teleport
                 tellMe += " nothing2do;";
             }
 
-            if (prcDebug)
-                Log.Warning(tellMe);
-        }
+            if ((StatusChillin) || (StatusOverweight) || (StatusNoItem)) {
+                Tools.Warn(tellMe, prcDebug);
+                return;
+            }
+            
+            
 
+            if (StatusReady)
+            {
+                tellMe += "ready to tp " + "N:" + RegisteredCount + ":" + DumpList();
+                // Work here
+                //
+            }
+
+            Tools.Warn(tellMe, prcDebug);
+        }
         public override void PostExposeData()
         {
             base.PostExposeData();
             Scribe_Values.Look(ref currentCooldown, "cooldown");
             Scribe_Values.Look(ref currentWeight, "weight");
             Scribe_References.Look(ref standingUser, "user");
-            Scribe_Collections.Look(ref tpThingList, "things", LookMode.Reference, new object[0]);
+            Scribe_Collections.Look(ref ThingList, "things", LookMode.Reference, new object[0]);
         }
         public override string CompInspectStringExtra()
         {
@@ -711,86 +728,42 @@ namespace LTF_Teleport
         {
             if ( !StatusNoPower && !StatusNoFacility)
             {
-                if (HasRegisteredItems)
+                if (HasItems)
                 {
                     // TP command there
-                    //ForceCooldown();
+                    // Status cooldown
+                    // Status weight
                 }
 
                 if (Prefs.DevMode)
                 {
-                    /*
+                    // Debug process
                     yield return new Command_Action
                     {
-                        defaultLabel = "bad capa" + weightCapacity * .5f,
-                        defaultDesc = "wc:"+weightCapacity,
+                        icon = ((prcDebug) ? (MyGfx.DebugOnGz) : (MyGfx.DebugOffGz)),
+                        defaultLabel = "prc: "+Tools.DebugStatus(prcDebug),
+                        defaultDesc = "process debug",
                         action = delegate
                         {
-                            FullHax(weightCapacity, weightCapacity * .5f);
+                            prcDebug = Tools.WarnBoolToggle(prcDebug, "debug " + building.Label);
                         }
                     };
-
-                    if(weightCapacity<40)
+                    // Debug gfx
                     yield return new Command_Action
                     {
-                        defaultLabel = "reset weight",
+                        icon = ((gfxDebug) ? (MyGfx.DebugOnGz) : (MyGfx.DebugOffGz)),
+                        defaultLabel = "gfx: "+Tools.DebugStatus(gfxDebug),
+                        defaultDesc = "gfx debug",
                         action = delegate
                         {
-                            SetWeightCapacity();
+                            gfxDebug = Tools.WarnBoolToggle(gfxDebug, "debug " + building.Label);
                         }
                     };
-
-                    yield return new Command_Action
-                    {
-                        defaultLabel = "bad cooldown" + cooldownBase * 2f,
-                        defaultDesc = "cb:" + cooldownBase,
-                        action = delegate
-                        {
-                            FullHax(cooldownBase, cooldownBase * 2f);
-                        }
-                    };
-
-                    if(cooldownBase>10000)
-                    yield return new Command_Action
-                    {
-                        defaultLabel = "reset cool base",
-                        action = delegate
-                        {
-                            SetCooldownBase();
-                        }
-                    };
-
-    */
-                    if (StatusReady)
-                    {
-                        yield return new Command_Action
-                        {
-                            defaultLabel = "cool "+currentCooldown+"->"+currentCooldown,
-                            defaultDesc = "c:" + currentCooldown,
-                            action = delegate
-                            {
-                                ForceCooldown();
-                            }
-                        };
-                    }
-                    else
-                    {
-                        yield return new Command_Action
-                        {
-                            defaultLabel = "reset cooldown",
-                            defaultDesc = "c:" + currentCooldown,
-                            action = delegate
-                            {
-                                ResetCooldown();
-                            }
-                        };
-                    }
-
                     if (gfxDebug)
                     {
                         yield return new Command_Action
                         {
-                            defaultLabel = "vanish "+ drawVanish + "->" + !drawVanish,
+                            defaultLabel = "vanish " + drawVanish + "->" + !drawVanish,
                             action = delegate
                             {
                                 drawVanish = !drawVanish;
@@ -798,7 +771,7 @@ namespace LTF_Teleport
                         };
                         yield return new Command_Action
                         {
-                            defaultLabel = "under "+drawUnderlay+"->"+!drawUnderlay,
+                            defaultLabel = "under " + drawUnderlay + "->" + !drawUnderlay,
                             action = delegate
                             {
                                 drawUnderlay = !drawUnderlay;
@@ -813,25 +786,103 @@ namespace LTF_Teleport
                             }
                         };
                     }
-                    
 
+                    //debug log + hax activate
+                    if(prcDebug)
                     yield return new Command_Action
                     {
-                        defaultLabel = "gfx Debug"+gfxDebug+"->"+!gfxDebug,
+                        //icon = ContentFinder<Texture2D>.Get("UI/Commands/HaxReady", true),
+                        icon = MyGfx.DebugLogGz,
+                        defaultLabel = "hax " + Tools.DebugStatus(Hax),
+                        defaultDesc = "$5,000 for you advert here.",
                         action = delegate
                         {
-                            gfxDebug = !gfxDebug;
-                        }
-                    };
-                    yield return new Command_Action
-                    {
-                        defaultLabel = "prc Debug" + prcDebug + "->" + !prcDebug,
-                        action = delegate
-                        {
-                            prcDebug =! prcDebug;
+                            Hax = Tools.WarnBoolToggle(Hax, "hax " + building.Label);
                         }
                     };
 
+                    // Hax Progress
+                    if (prcDebug && Hax)
+                    {
+                        if (currentCooldown != 0)
+                            yield return new Command_Action
+                            {
+                                icon = MyGfx.HaxEmptyGz,
+                                defaultLabel = currentCooldown + "->" + cooldownBase,
+                                defaultDesc = "force cooldown",
+                                action = delegate
+                                {
+                                    ForceCooldown();
+                                }
+                            };
+                        yield return new Command_Action
+                        {
+                            icon = MyGfx.HaxFullGz,
+                            defaultLabel = currentCooldown + "->0" ,
+                            defaultDesc = "reset cooldown",
+                            action = delegate
+                            {
+                                ResetCooldown();
+                            }
+                        };
+
+                        int minus10perc = (int)Mathf.Max(0, (currentCooldown - cooldownBase / 10));
+                        int plus10perc = (int)Mathf.Min(cooldownBase, (currentCooldown + cooldownBase / 10));
+
+                        yield return new Command_Action
+                        {
+                            icon = MyGfx.HaxSubGz,
+                            //defaultLabel = currentCooldown + "->" + minus10perc,
+                            defaultLabel = currentCooldown + "->" + plus10perc,
+                            defaultDesc = "-10%",
+                            action = delegate
+                            {
+                                SetCooldown(plus10perc);
+                            }
+                        };
+
+                        yield return new Command_Action
+                        {
+                            icon = MyGfx.HaxAddGz,
+                            defaultLabel = currentCooldown + "->" + minus10perc,
+                            //defaultLabel = currentCooldown + "->" + plus10perc,
+                            defaultDesc = "+10%",
+                            action = delegate
+                            {
+                                SetCooldown(minus10perc);
+                            }
+                        };
+
+                    }
+
+                    // Hax quality
+                    if (prcDebug &&Hax && (compQuality != null))
+                    {
+                        if (!ToolsQuality.BestQuality(compQuality))
+                            yield return new Command_Action
+                            {
+                                defaultLabel = compQuality.Quality.GetLabelShort() + "->" + ToolsQuality.BetterQuality(compQuality),
+                                defaultDesc = "Better quality",
+                                //icon = ContentFinder<Texture2D>.Get("UI/Commands/HaxReady", true),
+                                icon = MyGfx.HaxBetterGz,
+                                action = delegate
+                                {
+                                    BetterQuality();
+                                }
+                            };
+
+                        if (!ToolsQuality.WorstQuality(compQuality))
+                            yield return new Command_Action
+                            {
+                                defaultDesc = "Worse quality",
+                                defaultLabel = compQuality.Quality.GetLabelShort() + "->" + ToolsQuality.WorseQuality(compQuality),
+                                icon = MyGfx.HaxWorseGz,
+                                action = delegate
+                                {
+                                    WorseQuality();
+                                }
+                            };
+                    }
                 }
             }
         }

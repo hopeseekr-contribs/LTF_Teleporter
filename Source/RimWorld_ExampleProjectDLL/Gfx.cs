@@ -25,10 +25,6 @@ namespace LTF_Teleport
     {
         /* Graphics */
         /******************/
-        //public Mesh mesh1x1 = MeshPool.plane10;
-
-        public static string overlayPath = "Things/Building/TpSpot/Overlay/";
-
         public enum OpacityWay
         {
             no,
@@ -43,23 +39,8 @@ namespace LTF_Teleport
             under = -1,
         };
 
-        //'nothing':'white','pawn':'yellow','item':'magenta',
-        //'nothing':'white','pawn':'yellow','item':'magenta',
-        public static readonly Material EmptyTile = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.MoteGlow);
-       // public static readonly Material EmptyTile = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Transparent);
-        public static readonly Material ItemTile = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.MoteGlow, Color.blue);
-        public static readonly Material PawnTile = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Transparent, Color.red);
-        /*
-        public static readonly Material PawnOverTile = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Transparent, Color.blue);
-        public static readonly Material ItemOverTile = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Cutout, Color.red);
-        */
-        /*
-        public static readonly Material RedPixel = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.VertexColor, Color.red);
-        public static readonly Material CyanPixel = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.VertexColor, Color.cyan);
-        public static readonly Material YellowPixel = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.VertexColor, Color.yellow);
-        public static readonly Material MagentaPixel = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.VertexColor, Color.magenta);
-        */
-        public static readonly Graphic Vanish = GraphicDatabase.Get<Graphic_Slideshow>(overlayPath + "Vanish", ShaderDatabase.MetaOverlay);
+
+
         private static float UpdateOpacity(Thing thing, OpacityWay opacityWay = OpacityWay.no, float opacity=1, bool debug=false)
         {
             float newOpacity = -1;
@@ -78,7 +59,7 @@ namespace LTF_Teleport
                     newOpacity = PulseOpacity(thing);
                     break;
                 case OpacityWay.loop:
-                    newOpacity = LoopOpacity(thing);
+                    newOpacity = LoopFactorOne(thing);
                     break;
             }
 
@@ -88,6 +69,60 @@ namespace LTF_Teleport
                     Log.Warning("dumb opacity("+opacityWay+"):" + newOpacity +"(def="+opacity+")");
 
             return newOpacity;
+        }
+
+        public static void DrawTickRotating(Thing thing, Material mat, float x, float z, float angle=0f, float opacity=1, Layer myLayer = Layer.over,  bool debug = false)
+        {
+            Vector3 dotS = new Vector3(1f, 1f, 1f);
+            Matrix4x4 matrix = default(Matrix4x4);
+            Vector3 dotPos = thing.TrueCenter();
+
+            dotPos.x += x;
+            dotPos.z += z;
+            dotPos.y += (float)myLayer;
+
+            Material fadedMat = mat;
+
+            if (opacity!=1)
+                fadedMat = FadedMaterialPool.FadedVersionOf(mat, opacity);
+
+            Tools.Warn("tickRot angle: " + angle + "; opa:"+opacity, debug);
+            matrix.SetTRS(dotPos, Quaternion.AngleAxis(angle, Vector3.up), dotS);
+            Graphics.DrawMesh(MeshPool.plane10, matrix, fadedMat, 0);
+        }
+        /*
+        public static void DrawTickRotating(Thing thing, Material dotM, float x, float z, Layer myLayer = Layer.over, bool debug=false)
+        {
+            Vector3 dotS = new Vector3(1f, 1f, 1f);
+            Matrix4x4 matrix = default(Matrix4x4);
+            Vector3 dotPos = thing.TrueCenter();
+
+            dotPos.x += x;
+            dotPos.z += z;
+            dotPos.y += (float)myLayer;
+            float angle = (float)360 * Gfx.LoopFactorOne(thing);
+
+            Tools.Warn("tickRot angle: " + angle, debug);
+            matrix.SetTRS(dotPos, Quaternion.AngleAxis(angle, Vector3.up), dotS);
+            Graphics.DrawMesh(MeshPool.plane10, matrix, dotM, 0);
+        }
+        */
+        public static void DrawRandRotating(Thing thing, Material dotM, float x, float z, Layer myLayer = Layer.over, bool debug=false)
+        {
+            Vector3 dotPos = thing.DrawPos;
+
+            dotPos.x += x;
+            dotPos.z += z;
+            dotPos.y += (float)myLayer;
+
+            float angle = (float)Rand.Range(0, 360);
+
+            Tools.Warn("randRot angle: " + angle, debug);
+            Vector3 dotS = new Vector3(1f, 1f, 1f);
+            Matrix4x4 matrix = default(Matrix4x4);
+            matrix.SetTRS(dotPos, Quaternion.AngleAxis(angle, Vector3.up), dotS);
+
+            Graphics.DrawMesh(MeshPool.plane10, matrix, dotM, 0);
         }
 
         public static void DrawPulse(
@@ -140,7 +175,7 @@ namespace LTF_Teleport
             if (debug)
                 Log.Warning("Drew:" + gfx.color);
         }
-        private void Draw1x1OverlayBS(Vector3 buildingPos, Material gfx, Mesh mesh, float x, float z,
+        public void Draw1x1OverlayBS(Vector3 buildingPos, Material gfx, Mesh mesh, float x, float z,
                                 Color overlayColor,
                                 bool randRotation = false,
                                 bool randFlicker = false,
@@ -221,23 +256,81 @@ namespace LTF_Teleport
                 Log.Warning("Out Color: " + mat.color);
         }
 
-        public static float PulseOpacity(Thing thing)
+        // Meat grinder
+        public static void PulseWarning(Thing thing, Material mat)
+        {
+            Material material = FadedMaterialPool.FadedVersionOf(mat, VanillaPulse(thing));
+            Vector3 dotS = new Vector3(.6f, 1f, .6f);
+            Matrix4x4 matrix = default(Matrix4x4);
+            Mesh mesh = MeshPool.plane14;
+            matrix.SetTRS(thing.DrawPos, Quaternion.AngleAxis(0f, Vector3.up), dotS);
+            Graphics.DrawMesh(mesh, matrix, material, 0);
+        }
+
+        public static float PulseOpacity(Thing thing, float mask = 1, bool debug=false)
+        {
+            float num = (Time.realtimeSinceStartup + 397f * (float)(thing.thingIDNumber % 571)) * 4f;
+            float num2 = ((float)Math.Sin((double)num) + 1f) * 0.5f;
+
+            Tools.Warn("pulse ans!" + num2 + "; mask: "+mask+"; masked: " +num%mask);
+            num2 = num2 % mask;
+            
+            return num2;
+        }
+        // mask = 1 opacity ; mask 360 rotation
+        public static float LoopFactorOne(Thing thing, float mask=1, bool debug = false)
+        {
+            float num = (Time.realtimeSinceStartup + 397f * (float)(thing.thingIDNumber % 571)) * 4f;
+            float num2 = ((float)Math.Tan((double)num) + 1f) * 0.5f;
+            //num2 = (0.3f + num2 * 0.7f)%1;
+            Tools.Warn("loop ans!" + num2 + "; mask: " + mask + "; masked: " + num % mask,debug);
+            num2 = num2 % mask;
+            return num2;
+        }
+
+        public static float VanillaPulse(Thing thing)
         {
             float num = (Time.realtimeSinceStartup + 397f * (float)(thing.thingIDNumber % 571)) * 4f;
             float num2 = ((float)Math.Sin((double)num) + 1f) * 0.5f;
             num2 = 0.3f + num2 * 0.7f;
-
             return num2;
         }
-        public static float LoopOpacity(Thing thing)
+        public static float PulseFactorOne(Thing thing, float mask = 1, bool debug = false)
         {
-            float num = (Time.realtimeSinceStartup + 397f * (float)(thing.thingIDNumber % 571)) * 4f;
-            float num2 = ((float)Math.Atan((double)num/Mathf.PI/2) + 1f) * 0.5f;
-            num2 = 0.3f + num2 * 0.7f;
+            float timePhaseShiftValue = 397f;
+            float thingPhaseShiftValue = 571f;
+            float speedUp = 2f;
+
+            float num = (Time.realtimeSinceStartup + timePhaseShiftValue * (float)(thing.thingIDNumber % thingPhaseShiftValue)) * speedUp;
+            float num2 = ((float)Math.Sin((double)num) + 1f) * 0.5f;
+            Tools.Warn("pulse ans!" + num2 + "; mask: " + mask + "; masked: " + num % mask,debug);
+            num2 = num2 % mask;
 
             return num2;
         }
+        public static float RealLinear(Thing thing, float speedUp, float mask = 1f, bool debug = false)
+        {
+            float timePhaseShiftValue = 397f; float thingPhaseShiftValue = 571f;
 
+            float num = (Time.realtimeSinceStartup + timePhaseShiftValue * (float)(thing.thingIDNumber % thingPhaseShiftValue)) * 10/speedUp * 20;
+            float num2 = (num % 1000) / 1000;
+
+            Tools.Warn("RealLinear: " + num + "->" + num2, debug);
+
+            return num2;
+        }
+        public static float RealtimeFactor(Thing thing, float mask = 1f, bool debug=false)
+        {
+            float timePhaseShiftValue = 397f; float thingPhaseShiftValue = 571f;
+            float speedUp = 2f;
+
+            float num = (Time.realtimeSinceStartup + timePhaseShiftValue * (float)(thing.thingIDNumber % thingPhaseShiftValue)) * speedUp;
+            float num2 = ((float)Math.Cos((double)-num) + 1f) * 0.5f;
+
+            Tools.Warn("RealtimeFactor:" + num2 + "->" + num2 % mask,debug);
+
+            return (num2 % mask);
+        }
 
         public class Graphic_Slideshow : Graphic_Collection
         {
