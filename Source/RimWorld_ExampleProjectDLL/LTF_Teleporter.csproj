@@ -48,6 +48,10 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CompTargetable_Building.cs" />
+    <Compile Include="CompTargetEffect_TpSpotLink.cs" />
+    <Compile Include="Comp_LTF_TpBench.cs" />
+    <Compile Include="GfxSlideShow.cs" />
     <Compile Include="ToolsBuilding.cs" />
     <Compile Include="CompProperties_LTF_TpSpot.cs" />
     <Compile Include="Comp_LTF_TpSpot.cs" />
@@ -56,6 +60,7 @@
     <Compile Include="Quality.cs" />
     <Compile Include="Tools.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ToolsGizmo.cs" />
     <Compile Include="TpSpot_Gfx.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

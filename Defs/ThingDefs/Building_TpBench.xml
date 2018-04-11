@@ -3,7 +3,7 @@
 
 	<ThingDef ParentName="BuildingBase">
 		<defName>LTF_TpBench</defName>
-		<label>Teleport bench</label>
+		<label>TP workstation</label>
 		<thingClass>Building_WorkTable</thingClass>
 
 		<graphicData>
@@ -31,16 +31,16 @@
 		
 		<statBases>
 			<!--<MarketValue>3000</MarketValue>-->
-			<WorkToBuild>3200</WorkToBuild>
+			<WorkToBuild>15000</WorkToBuild>
 			<MaxHitPoints>250</MaxHitPoints>
 			<Flammability>1.0</Flammability>
 		</statBases>
 		
 		<tickerType>Normal</tickerType>
 
-		<description>A powered teleport bench.
-- Requires at least 1 teleport spot. Max 4.
-- Requires colonist on teleport spot.
+		<description>A power consumptive workstation.
+- Requires at least 1 teleport spot.
+State your orders and schedule strategic wanderings.
 </description>
 		<size>(3,1)</size>
 		<designationCategory>Security</designationCategory>
@@ -55,10 +55,10 @@
 			<li>Metallic</li>
 		</stuffCategories>
 		
-		<costStuffCount>150</costStuffCount>
+		<costStuffCount>200</costStuffCount>
 		<costList>
 			<Steel>50</Steel>
-			<Uranium>5</Uranium>
+			<Uranium>20</Uranium>
 			<Component>5</Component>
 		</costList>
 		
@@ -83,6 +83,18 @@
 				<maxSimultaneous>1</maxSimultaneous>
 				<maxDistance>5</maxDistance>
 			</li>
+			<li Class="CompProperties_Glower">
+				<glowRadius>5</glowRadius>
+				<!-- pink -->
+				<glowColor>(60,200,100,0)</glowColor>
+			</li>
+
+			
+			<!-- Main -->
+			<li>
+				<compClass>LTF_Teleport.Comp_TpBench</compClass>
+			</li>
+			
 		</comps>
 		
 		<terrainAffordanceNeeded>Heavy</terrainAffordanceNeeded>

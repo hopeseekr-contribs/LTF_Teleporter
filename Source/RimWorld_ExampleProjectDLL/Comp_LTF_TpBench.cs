@@ -12,809 +12,187 @@ using UnityEngine;
 
 
 
-namespace LighterThanFast
+namespace LTF_Teleport
 {
-    //TODO
-    //Faction impact // Cloning should only happen with people from faction, but with mind control
-    //Addthought Self hurt
-    //Addthought thinking about own death
-    //        private CompFlickable flickComp;
-
-    // workAmount Quality + meat amount 
-    // Number of scanned people  : Quality
-
-
-    // Venipuncture
-    public class CompUseEffect_LTF_Venipuncture : CompUseEffect
-    {
-        public override void DoEffect(Pawn usedBy)
-        {
-            //Log.Warning(">>> DoEffect <<<");
-            //base.DoEffect(usedBy);
-            base.DoEffect(usedBy);
-            Comp_LTF_Phenodrill comp = null;
-            comp = parent.TryGetComp<Comp_LTF_Phenodrill>();
-            if (comp == null)
-            {
-                Log.Warning("comp Null in use effect");
-                return;
-            }
-
-            BodyPartRecord bodyPart = null;
-            if (usedBy == null)
-            {
-                Log.Warning("wtf dude");
-                return;
-            }
-            usedBy.RaceProps.body.GetPartsWithTag("ManipulationLimbCore").TryRandomElement(out bodyPart);
-            if (bodyPart == null)
-            {
-                Log.Warning("no body part Found");
-                return;
-            }
-
-            //Log.Warning("Found: " + bodyPart.def.label);
-            DamageInfo damage = new DamageInfo(DamageDefOf.SurgicalCut, 1, -1f, null, bodyPart, null, DamageInfo.SourceCategory.ThingOrUnknown);
-
-            //HediffDef bloodHediff = HediffDefOf.BloodLoss;
-            HediffDef cutHediff = HediffDefOf.SurgicalCut;
-            usedBy.health.AddHediff(cutHediff, bodyPart, damage);
-
-            if (comp.IsFull())
-            {
-                Messages.Message("This "+parent.def.label+" is full.", this.parent, MessageTypeDefOf.TaskCompletion);
-                return;
-            }
-
-            if (comp.CheckRegisteredSomewhere(usedBy))
-            {
-                Messages.Message(usedBy.Label + " is already registered somewhere.", this.parent, MessageTypeDefOf.TaskCompletion);
-                return;
-            }
-            //ThoughtMaker.MakeThought()
-            comp.SetTarget(usedBy);
-            comp.SideEffect(usedBy);
-            comp.ResetProgress();
-            SoundDefOf.LessonActivated.PlayOneShotOnCamera(usedBy.MapHeld);
-
-        }
-    }
-
     // Main
     [StaticConstructorOnStartup]
-    public class Comp_LTF_Phenodrill : ThingComp
+    public class Comp_TpBench : ThingComp
     {
-        // bench Setup
-        Building bench = null;
+        Building building = null;
+        Vector3 buildingPos;
+        String buildingName = string.Empty;
+
+        /* Comp */
+        /******************/
         private CompPowerTrader powerComp;
-        private CompQuality qualityComp;
-        private float setupRadius = 10f;
+        public CompQuality compQuality;
 
-        // pre Scan
-        private Pawn bloodGiver = null;
-        private float scanProgress = 0;
-        
-        private float scanWorkAmount = 2000;
+        //private float benchRadius = 35.7f;
 
-        public float XpLossPivot = 8f; // will be set
-        public float XpRand = 4f; // will be set
+        private List<Building> tpSpotRegistry = new List<Building>();
 
-        // Scanned
-        List<LTF_PawnSnapshot> RegisteredPawns = new List<LTF_PawnSnapshot>();
-        // Should be linked to quality
-        int RegisteredPawnMax = 4;
+        private enum MindVector { Ascen, Manip, Empat, Na };
+        string[] vectorName = { "Ascendancy", "Manipulation", "Empathy", "Impossibru" };
 
-        static string overlayPath = "Things/Building/Phenodrill/overlay/";
+        private const float defaultWorkAmount = 3600f; // 120sec = 60  * 120 = 7200 
+        private float workGoal = defaultWorkAmount;
+        private float workProgress = 0;
 
-        Mesh myMesh = MeshPool.plane10;
+        private bool mindcontrolEnabled = false;
+        //bool mindReachable = false;
 
-        private static readonly Material fullGfx = MaterialPool.MatFrom(overlayPath + "full", ShaderDatabase.MetaOverlay);
-        private static readonly Material notFullGfx = MaterialPool.MatFrom(overlayPath + "notFull", ShaderDatabase.MetaOverlay);
-        private static readonly Material okGfx = MaterialPool.MatFrom(overlayPath + "ok", ShaderDatabase.MetaOverlay);
-        private static readonly Material koGfx = MaterialPool.MatFrom(overlayPath + "ko", ShaderDatabase.MetaOverlay);
-
-        private static readonly Material doorGfx = MaterialPool.MatFrom(overlayPath + "door", ShaderDatabase.Transparent);
-        private static readonly Material vatGfx = MaterialPool.MatFrom(overlayPath + "vat", ShaderDatabase.Transparent);
-        private static readonly Material clawGfx = MaterialPool.MatFrom(overlayPath + "claw", ShaderDatabase.Transparent);
-        //Graphic_Appearances Graphic_Multi
-        private static readonly Graphic dnaGfx = GraphicDatabase.Get<Graphic_Flicker>(overlayPath + "dna", ShaderDatabase.TransparentPostLight, Vector2.one*.5f, Color.white);
-
-        public CompProperties_LTF_Phenodrill Props
-        {
-            get
-            {
-                return (CompProperties_LTF_Phenodrill)props;
-            }
-        }
+        bool prcDebug = false;
+        bool gfxDebug = false;
+        bool Hax = false;
 
         public override void PostDraw()
         {
             base.PostDraw();
 
-            Vector3 benchPos = bench.DrawPos;
+            if (!GotThePower)
+            {
+                Tools.Warn("no power no overlay", false);
+                return;
+            }
+
+            Vector3 benchPos = this.parent.DrawPos;
             if (benchPos == null)
             {
-                Log.Warning("null pos draw");
+                Tools.Warn("null bench pos draw", prcDebug);
                 return;
             }
-            // higher than ground to be visible
-            benchPos.y += 0.046875f;
-            //benchPos.y += 4;
+            // higher than ground to be visible ; maybe too high ?
+            benchPos.y += 4;
 
-            if (!CheckBench() || !CheckPower())
+            float progressSize = (ProgressToRegister > 1f) ? (1f) : (ProgressToRegister * 1.5f);
+
+            //if (mindcontrolEnabled)
+            //DrawPulse((Thing)parent, Gfx.readyMat, benchPos);
+
+            /*
+            if (!IsWorkDone)
             {
-                //Insert DIE Grace when no power here
-                //Log.Warning("nopeverlay");
-                return;
+
             }
+            */
 
-            Material myJob = null;
-            bool pulse = false;
+            // work progress bars
+            /*
+            int neededWorkBarN = Mathf.RoundToInt(ProgressToRegister * Gfx.workBarNum);
+            if (neededWorkBarN > 1)
+            {
+                if (neededWorkBarN > Gfx.workBarNum) neededWorkBarN = Gfx.workBarNum;
 
-            if (CheckUser())
-            {
-                myJob = koGfx;
-                pulse = true;
-                DrawClaw(benchPos, clawGfx, myMesh, bench);
-            }
-            else
-            {
-                
-                if (IsFull())
+                for (int i = 1; i < neededWorkBarN + 1; i++)
                 {
-                    myJob = fullGfx;
-                }
-                else
-                {
-                    //if has worker ko
-                    if (HasTarget())
-                    {
-                        myJob = okGfx;
-                        pulse = true;
-                    }
-                    else
-                    {
-                        myJob = notFullGfx;
-                    }
+                    Gfx.DrawBar(benchPos, -1.5f, .12f, i);
                 }
             }
-
-            //DrawDot(benchPos, myJob, myMesh, .06f, .88f, bench, pulse);
-            DrawDot(benchPos, myJob, myMesh, .06f, .85f, bench, pulse);
-
-            if (hasRegistered())
-            {
-                int num = RegisteredNum();
-                float myX; float myY;
-
-                for(int i=1; i <= num; i++)
-                {
-                    myX = .052f; myY = 0f;
-                    if (i == 1)
-                    {
-                        myX += -.905f;
-                        myY += .395f;
-                    }else if (i == 2)
-                    {
-                        myX += -.6f;
-                        myY += .64f;
-                    }
-                    else if (i == 3)
-                    {
-                        myX += .57f;
-                        myY += .64f;
-                    }
-                    else if (i == 4)
-                    {
-                        myX += .88f;
-                        myY += .395f;
-                    }
-                    else
-                    {
-                        Log.Warning("Impossibru registered");
-                    }
-
-                    DrawDot(benchPos, vatGfx, myMesh, myX, myY, bench, false);
-                    Vector3 dnaPos = benchPos;
-                    dnaPos.x += myX;
-                    dnaPos.z += myY+.2f;
-                    dnaGfx.Draw(dnaPos, Rot4.North, this.parent, 0f);
-                }
-            }
+            */
         }
-
-        private void DrawDot(Vector3 benchPos, Material dotGfx, Mesh mesh, float x, float z, Thing bench, bool pulse)
-        {
-            Vector3 dotPos = benchPos;
-            dotPos.x += x;
-            dotPos.z += z;
-
-            Material material = dotGfx;
-
-            if (pulse)
-            {
-                float num = (Time.realtimeSinceStartup + 397f * (float)(bench.thingIDNumber % 571)) * 4f;
-                float num2 = ((float)Math.Sin((double)num) + 1f) * 0.5f;
-                num2 = 0.3f + num2 * 0.7f;
-                material = FadedMaterialPool.FadedVersionOf(dotGfx, num2);
-            }
-
-
-            Vector3 dotS = new Vector3(.56f, 1f, .56f);
-            Matrix4x4 matrix = default(Matrix4x4);
-            matrix.SetTRS(dotPos, Quaternion.AngleAxis(0f, Vector3.up), dotS);
-            //            Graphics.DrawMesh(mesh, benchPos, matrix, dotGfx, 0);
-            Graphics.DrawMesh(mesh, matrix, material, 0);
-        }
-
-        private void DrawClaw(Vector3 benchPos, Material dotGfx, Mesh mesh, Thing bench)
-        {
-            Vector3 dotPos = benchPos;
-
-            Vector3 dotS = new Vector3(bench.def.size.x, 1f, bench.def.size.z);
-            Matrix4x4 matrix = default(Matrix4x4);
-            matrix.SetTRS(dotPos, Quaternion.AngleAxis(0f, Vector3.up), dotS);
-            //            Graphics.DrawMesh(mesh, benchPos, matrix, dotGfx, 0);
-            Graphics.DrawMesh(mesh, matrix, dotGfx, 0);
-        }
-
-        public void SetTarget(Pawn volonteer)
-        {
-            if(!CheckPawn(volonteer))
-            {
-                Log.Warning("SetTarget null;");
-                return;
-            }
-            bloodGiver = volonteer;
-        }
-        void ResetTarget()
-        {
-            bloodGiver = null;
-        }
-        public bool HasTarget()
-        {
-            return (bloodGiver != null);
-        }
-
-        public bool CheckRegisteredSomewhere(Pawn candidat)
-        {
-            int i = 0;
-            foreach (Building drill in candidat.Map.listerBuildings.AllBuildingsColonistOfDef(ThingDef.Named("LTF_Phenodrill")))
-            {
-
-                //Log.Warning("b" + i + " : " + drill.Label);
-
-                Comp_LTF_Phenodrill comp = null;
-                comp = drill.TryGetComp<Comp_LTF_Phenodrill>();
-
-                if (comp == null)
-                {
-                    Log.Warning("Impossibru");
-                }
-
-                //if (comp.CheckPower() && (comp.hasRegistered()))
-                if (comp.hasRegistered())
-                {
-                    //Log.Warning("Found "++" with registered");
-
-                    if (comp.HasSpecificPawn(candidat.ThingID))
-                    {
-                        //Log.Warning(candidat.NameStringShort + "already registered in " + drill.Label);
-                        return true;
-                    }
-                }
-                else
-                {
-                    //Log.Warning("b" + i + " has noone registered ");
-                }
-
-                i++;
-            }
-            return false;
-        }
-
-        public bool ScanCommit()
-        {
-            if (!CheckBench())
-            {
-                return false;
-            }
-             if (IsFull())
-            {
-                return false;
-            }
-            if (!CheckPawn(bloodGiver))
-            {
-                return false;
-            }
-            
-            // If bloodGiver true faction comp_mind
-
-            PawnGenerationRequest request = new PawnGenerationRequest(
-              // PawnKindef Faction
-              bloodGiver.kindDef, Faction.OfPlayer,
-            // Backstories ?
-            PawnGenerationContext.PlayerStarter,
-            // tile forceGenerateNewPawn
-            -1, true,
-            //newborn allowDead
-            false, true,
-            //true, true,
-            //downed canGeneratePawnRelations
-            true, true,
-            //violence colonistRelationChanceFactor
-            false, 20f,
-            // warm allowGay
-            false, true,
-            // food  inhabitan
-            false, false,
-            //crypto forceRedressWorldPawnIfFormerColonist
-            true, false,
-            // world Predicate<Pawn> validator
-            false, null,
-            // min fixedBiologicalAge
-            null, bloodGiver.ageTracker.AgeBiologicalYearsFloat,
-            // ageChrono fixedGender
-            bloodGiver.ageTracker.AgeBiologicalYearsFloat, bloodGiver.gender,
-            // melanin fixedLastName
-            //null, bloodGiver.NameStringShort+(int)Rand.Range(1,100));
-            null, null);
-
-            //Log.Warning(bloodGiver.Label + " Init");
-            var pawnSnapshot = new LTF_PawnSnapshot();
-
-            //Log.Warning(bloodGiver.Label + " generate");
-            // pawn creation query
-            pawnSnapshot.newClone = PawnGenerator.GeneratePawn(request);
-            //Log.Warning(bloodGiver.Label + " generate");
-
-
-            pawnSnapshot.original = bloodGiver;
-            pawnSnapshot.pawnThingId = pawnSnapshot.original.ThingID;
-            pawnSnapshot.newClone.Name = bloodGiver.Name;
-            pawnSnapshot.AAA = (int)AANeeded(bloodGiver);
-            pawnSnapshot.drillDep = bench;
-
-            //Log.Warning(bloodGiver.Label + " Traits");
-            // Traits
-            pawnSnapshot.newClone.story.childhood = bloodGiver.story.childhood;
-            pawnSnapshot.newClone.story.adulthood = bloodGiver.story.adulthood;
-
-            // APWAL
-            pawnSnapshot.newClone.apparel.DestroyAll();
-            pawnSnapshot.newClone.story.bodyType = bloodGiver.story.bodyType;
-            pawnSnapshot.newClone.story.crownType = bloodGiver.story.crownType;
-            pawnSnapshot.newClone.story.melanin = bloodGiver.story.melanin;
-
-            pawnSnapshot.newClone.story.hairDef = bloodGiver.story.hairDef;
-            pawnSnapshot.newClone.story.hairColor = bloodGiver.story.hairColor;
-
-            pawnSnapshot.newClone.story.traits.allTraits = bloodGiver.story.traits.allTraits.ListFullCopy();
-            
-            
-
-            //Log.Warning(bloodGiver.Label + " Hediff");
-            // Hediff
-            pawnSnapshot.newClone.health.hediffSet.hediffs = bloodGiver.health.hediffSet.hediffs.ListFullCopy();
-            //Log.Warning("full copy ok");
-            List<Hediff> myHediffs = bloodGiver.health.hediffSet.hediffs;
-            pawnSnapshot.rememberToRemove = new List<String>();
-            //Log.Warning("Loopin " + myHediffs.Count + " hediffs");
-            for (int i = 0; i < myHediffs.Count; i++)
-            {
-                BodyPartRecord myBP = myHediffs[i].Part;
-                
-                AddedBodyPartProps addedPartProps = myHediffs[i].def.addedPartProps;
-                if (addedPartProps != null && addedPartProps.isBionic)
-                {
-                    Log.Warning("Adding:"+myBP.def.label);
-                    pawnSnapshot.rememberToRemove.Add(myBP.def.label);
-                }
-            }
-
-            //Passion
-            //Log.Warning(bloodGiver.Label + " passion");
-            for (int i = 0; i < bloodGiver.skills.skills.Count; i++)
-            {
-                SkillRecord curBloodSkill = bloodGiver.skills.skills[i];
-                SkillRecord curCloneSkill = pawnSnapshot.newClone.skills.skills[i];
-                curCloneSkill.passion = curBloodSkill.passion;
-            }
-
-            Pawn clone = pawnSnapshot.newClone;
-
-            //Log.Warning(bloodGiver.Label + " SKill");
-
-            //Skills
-
-            ///
-            //int nerfLevelNum = 3;
-
-
-            for(int Disabli = 0; Disabli < 2; Disabli++)
-            {
-                for (int i = 0; i < bloodGiver.skills.skills.Count; i++)
-                {
-                    SkillRecord curBloodSkill = bloodGiver.skills.skills[i];
-                    SkillRecord curCloneSkill = clone.skills.skills[i];
-
-                    int nerfLevelNum=(int)XpLossPivot;
-                    int RNG = Rand.RangeInclusive(-(int)XpRand, (int)XpRand);
-                    //int RNG = (int)Math.Round();
-                    nerfLevelNum += RNG;
-
-                    //Log.Warning("nerf goal " + curBloodSkill.def.label + ":" + XpLossPivot + "+" + RNG + "=" + nerfLevelNum);
-                    if (nerfLevelNum > Props.XpLossMax)
-                    {
-                        //Log.Warning("wanted"+nerfLevelNum+"limit"+Props.XpLossMax);
-                        nerfLevelNum = (int)Props.XpLossMax;
-                    }
-
-                    int goalLevel = (curBloodSkill.levelInt - nerfLevelNum);
-                    if (goalLevel < 0) goalLevel = 0;
-                    if (goalLevel > 20) goalLevel = 20;
-
-                    int levelDiff = goalLevel - curCloneSkill.levelInt;
-
-                   // Log.Warning(i + " :" + curBloodSkill.def.label + ":" + curBloodSkill.levelInt + "/" + curCloneSkill.levelInt + ";need:" + goalLevel);
-                    
-                    if (curBloodSkill.TotallyDisabled)
-                    {
-                        goalLevel = 0;
-                    }
-                    if (curCloneSkill.TotallyDisabled)
-                    {
-                        //Log.Warning("skipping skill : wont be able to learn");
-                        continue;
-                    }
-                    
-                    int loopBreaker = 0;
-                    float totalNerf = 0;
-
-                    //Log.Warning(curCloneSkill.def.label +"start");
-
-                    while (curCloneSkill.levelInt != goalLevel)
-                    {
-
-                        if ((curCloneSkill.levelInt < 0) || (curCloneSkill.levelInt > 20))
-                        {
-                            //Log.Warning("nerf overflow");
-                            break;
-                        }
-                        if (loopBreaker++ > 40)
-                        {
-                            //Log.Warning("Loops" + loopBreaker + ";nerf:"+ totalNerf);
-                            break;
-                        }
-                        levelDiff = curCloneSkill.levelInt - goalLevel;
-                        //speedupNerfFactor
-                        float sNF = -levelDiff;
-                        float nerfAmount;
-                        float counterPassion;
-
-                        if (Math.Abs(levelDiff) > 1) {
-                            nerfAmount = sNF* Rand.Range(900f, 1000f);
-                            counterPassion = 3f;
-                        }
-                        else
-                        {
-                            nerfAmount = sNF * Rand.Range(500f, 1000f);
-                            counterPassion = 1.5f;
-                        }
-
-                         
-
-                        //curCloneSkill.Learn(nerfAmount,);
-                        //Log.Warning("trying to learn " + curCloneSkill.def + ":" + nerfAmount);
-                        clone.skills.Learn(curCloneSkill.def, nerfAmount* counterPassion, true);
-                        totalNerf += nerfAmount;
-                        //Log.Warning("Diff=" + levelDiff + ";nerf=" + nerfAmount);
-                    }
-                    //Log.Warning(i + " done: " + totalNerf + "; original: " + curBloodSkill.levelInt + "; Clone:" + curCloneSkill.levelInt);
-                }
-               // Log.Warning("EnableInit");
-                clone.workSettings.EnableAndInitialize();
-            }
-
-        //Parse original and disable clone
-            foreach (WorkTypeDef currentDW in bloodGiver.story.DisabledWorkTypes)
-            {
-                //Log.Warning(currentDW.defName + "needs disable");
-                clone.workSettings.Disable(currentDW);
-            }
-            // set priority what it does
-            foreach (WorkTypeDef currentW in from w in DefDatabase<WorkTypeDef>.AllDefs
-                                             where w.alwaysStartActive
-                                             select w)
-            {
-                if (!clone.story.WorkTypeIsDisabled(currentW))
-                {
-                    clone.workSettings.SetPriority(currentW, 3);
-                }
-            }
-
-            // Cryptosleep sickness
-            clone.health.AddHediff(HediffDefOf.CryptosleepSickness, null, null);
-
-            //Log.Warning("EnableInit");
-            clone.workSettings.EnableAndInitialize();
-            //Log.Warning(bloodGiver.Label + " Add");
-            RegisteredPawns.Add(pawnSnapshot);
-
-            ResetProgress();
-            ResetTarget();
-
-
-            //Log.Warning("full commit");
-            return true;
-        }
-
         // progress in work
-        public float Progress
+        public float ProgressToRegister
         {
             get
             {
-                return scanProgress / scanWorkAmount;
+                return workProgress / workGoal;
             }
         }
 
-        private float AANeeded (Pawn pawn)
+        // get power comp
+        public override void PostSpawnSetup(bool respawningAfterLoad)
         {
-            float rawValue = 0;
-            
-            rawValue += pawn.GetStatValue(StatDefOf.MeatAmount, true) *2.5f;
+            //Building
+            building = (Building)parent;
+            buildingPos = building.DrawPos;
+            buildingName = building?.LabelShort;
 
-            return rawValue;
-        }
-            
-        public bool HasSpecificPawn(string originalStringId)
-        {
-            //Log.Warning(bench.Label + " lookin for " + originalStringId + " in " + RegisteredNum() + "pool");
-            //int i = 0;
-            bool answer = false;
-            
+            //Building comp
+            powerComp = building?.TryGetComp<CompPowerTrader>();
+            compQuality = building?.TryGetComp<CompQuality>();
 
-            foreach(var registered in RegisteredPawns)
+            if (powerComp == null)
             {
-                //Log.Warning("pawn" + i + " : Comparin " + originalStringId + " to " + registered.pawnThingId); i++;
-                if (originalStringId == registered.pawnThingId)
-                {
-                    answer = true;
-                }
+                Tools.Warn("power comp Null");
             }
-            return answer;
         }
-
-        public bool hasRegistered()
-        {
-            return (!RegisteredPawns.NullOrEmpty());
-        }
-
-        public void ResetRegistered()
-        {
-            RegisteredPawns.Clear();
-        }
-
-        public int RegisteredNum()
-        {
-            return (RegisteredPawns.Count);
-        }
-
-        public bool ForgetSnapshot(string removeDataId)
-        {
-            bool didIt = false;
-
-            if (!hasRegistered())
-            {
-                //Log.Warning("cant forget nothing");
-                return false;
-            }
-            else
-            {
-                //Log.Warning("I can forget");
-            }
-
-            //Log.Warning("Trying to forget" + removeDataId);
-
-            var itemToRemove = RegisteredPawns.SingleOrDefault(r => r.pawnThingId == removeDataId);
-            if (itemToRemove != null)
-            {
-                RegisteredPawns.Remove(itemToRemove);
-                didIt = true;
-            }
-            return didIt;
-        }
-
-        public LTF_PawnSnapshot GetFirstDead()
-        {
-            if (!hasRegistered())
-                return null;
-            var itemToReturn = RegisteredPawns.SingleOrDefault(r => r.original.Dead == true);
-            if (itemToReturn != null)
-            {
-                return itemToReturn;
-            }
-            return null;
-        }
-
-        private void ProgressHax()
-        {
-            scanProgress = scanWorkAmount;
-        }
-        public void ResetProgress()
-        {
-            scanProgress = 0f;
-        }
-        string ProgressString()
-        {
-            string buffer = string.Empty;
-            buffer = "[" + scanProgress + " / " + scanWorkAmount + "]";
-            return (buffer);
-        }
-        private bool HasWorkTodo()
-        {
-            return (HasTarget() && (scanProgress < scanWorkAmount));
-        }
-
-        public bool IsFull()
-        {
-            return (RegisteredPawns.Count >= RegisteredPawnMax);
-        }
-
-        public bool TryScanReach()
-        {
-            // bench pos & map
-            if(!CheckBench())
-            {
-                Log.Warning("null bench");
-                return false;
-            }
-
-            if (!CheckPawn(bloodGiver))
-            {
-                //Log.Warning("null bloodGiver");
-                ResetProgress();
-                return false;
-            }
-            float benchTargetPawnDistance = 999f;
-            benchTargetPawnDistance = bloodGiver.Position.DistanceTo(bench.Position);
-
-            if (benchTargetPawnDistance > Props.ScanRadius)
-            {
-                //Messages.Message("Target is too far.", this.parent, MessageTypeDefOf.TaskCompletion);
-                return false;
-            }
-
-            return true;
-        }
-
-        public bool BuildingInRadius()
-        {
-            if ((setupRadius <= 1) || (this.parent.Position == null) || (this.parent.Map == null))
-            {
-                Log.Warning("null bench");
-                return false;
-            }
-
-            //Find other buildings
-            //setupReachable = true;
-            return true;
-        }
-
-        private bool CheckPawn(Pawn pawn)
-        {
-            if (pawn == null || pawn.Map == null)
-                return false;
-
-            return true;
-        }
-
-        public bool CheckPower()
-        {
-            if (this.powerComp == null || !this.powerComp.PowerOn)
-                return false;
-            return true;
-        }
-
-        private bool CheckBench()
-        {
-            if ((bench == null) || (Props.ScanRadius <= 1) || (bench.Position == null) || (bench.Map == null))
-                return false;
-            return true;
-        }
-
-        private bool CheckUser()
-        {
-            if (!bench.InteractionCell.IsValid)
-            {
-                return false;
-            }
-
-
-            List<Pawn> allPawnsSpawned = bench.Map.mapPawns.SpawnedPawnsInFaction(Faction.OfPlayer);
-            int pawnNum = allPawnsSpawned.Count;
-
-            /*IEnumerable<Pawn> enumerable = from x in PawnsFinder.AllMaps_SpawnedPawnsInFaction(FactionDefOf.PlayerColony)
-                                            where x.Position == pawn.def
-                                            where bench.InteractionCell.AdjacentTo8WayOrInside(x.Position)
-                                           select x;*/
-            //Log.Warning(bench.Label + " found " + allPawnsSpawned.Count);
-            int num = 0;
-            foreach (Pawn current in allPawnsSpawned)
-            {
-                if (current == null)
-                { //Log.Warning("null"); 
-                    continue;
-                };
-
-                //Log.Warning(num + ":" + current.NameStringShort);
-                //Log.Warning("doing:" + current.jobs.curDriver.job.def.defName);
-                num++;
-
-                if (current.Faction != Faction.OfPlayer)
-                { //Log.Warning("faction");
-                    continue;
-                };
-
-                if (current.mindState.mentalStateHandler.InMentalState)
-                { //Log.Warning("mental");
-                    continue;
-                };
-
-                float closeEnough = current.Position.DistanceTo(bench.InteractionCell);
-                if(closeEnough > 4f)
-                {
-                    continue;
-                }
-
-                
-                if (current.jobs.curDriver.job.def.defName != "UseItem")
-                { //Log.Warning("mental");
-                    continue;
-                };
-                //Log.Warning("using item");
-
-                if (current.jobs.curDriver.job.targetA.Thing.ThingID != bench.ThingID)
-                {
-                    continue;
-                }
-
-                return true;
-            }
 
         /*
-            if ((maybeUser.jobs.curDriver.job == null) || (maybeUser.jobs.curDriver.job.def != JobDefOf.))
-            { //Log.Warning("dobill");
-                return false;
-            }
-            */
-            return false;
-
-        }
-
-
-        public void SideEffect(Pawn pawn)
+        public void DeSpawn()
         {
-
-            AddFilth(pawn);
-            AddThought(pawn);
+            base.DeSpawn();
+            this.ResetCurrentTarget();
         }
+        */
 
-        void AddThought(Pawn pawn)
+        public override void PostExposeData()
         {
-            pawn.needs.mood.thoughts.memories.TryGainMemory(ThoughtDef.Named("LTF_CloneRegister"), null);
-        }
-        
-        private bool PawnHasBlood(Pawn pawn)
-        {
-            return (pawn.RaceProps.BloodDef != null);
-        }
-
-        private void AddFilth(Pawn pawn)
-        {
-            if (PawnHasBlood(pawn))
+            base.PostExposeData();
+            Scribe_Collections.Look<Building>(ref tpSpotRegistry, "tpSpots", LookMode.Reference, new object[0]);
+            if (Scribe.mode == LoadSaveMode.PostLoadInit && this.tpSpotRegistry == null)
             {
-                FilthMaker.MakeFilth(pawn.Position, pawn.Map, pawn.RaceProps.BloodDef, pawn.LabelIndefinite(), 1);
+                this.tpSpotRegistry= new List<Building>();
+            }
+        }
+        public void MindMineTick(Pawn masterMind)
+        {
+            workProgress += 1;
+
+            if (this.workProgress > workGoal)
+            {
+                mindcontrolEnabled = true;
+            }
+        }
+        public bool HasSpot
+        {
+            get
+            {
+                return (!tpSpotRegistry.NullOrEmpty());
+            }
+        }
+        public void RemoveSpot(Building target)
+        {
+            if ((target == null) || (target.def.defName != "LTF_TpSpot"))
+                Tools.Warn("Trying to remove a non tp spot", prcDebug);
+
+            tpSpotRegistry.Remove(target);
+        }
+        public void AddSpot(Building target)
+        {
+            if ((target == null) || (target.def.defName != "LTF_TpSpot"))
+                Tools.Warn("Trying to register a non tp spot", prcDebug);
+
+
+            if (tpSpotRegistry.Contains(target))
+            {
+                return;
+            }
+            tpSpotRegistry.Add(target);
+
+        }
+
+        public void InitWork()
+        {
+            workProgress = 0;
+        }
+
+        public void ResetProgress()
+        {
+            workProgress = 0;
+            mindcontrolEnabled = false;
+        }
+        public bool IsWorkDone
+        {
+            get
+            {
+                return (mindcontrolEnabled);
+            }
+        }
+        public bool GotThePower
+        {
+            get
+            {
+                return (ToolsBuilding.CheckPower(building));
             }
         }
 
@@ -823,214 +201,269 @@ namespace LighterThanFast
             StringBuilder stringBuilder = new StringBuilder();
             String buffer = string.Empty;
 
-            stringBuilder.AppendLine("| Phenodrill pool |");
-            stringBuilder.AppendLine("+--------------------+");
-            
-            if (bloodGiver != null)
-            {
-                stringBuilder.AppendLine("|");
-                stringBuilder.AppendLine("+---[Scan in progress:" + ProgressString() +"]");
-                stringBuilder.AppendLine("|\t|");
-                stringBuilder.AppendLine("|\t[" + bloodGiver.Label + "]" );
-            }
-            // count all pawns registered
-            stringBuilder.AppendLine("|");
-            stringBuilder.AppendLine("+-------[Pawns registered "+ RegisteredPawns.Count + "/" + RegisteredPawnMax + " ]");
+            stringBuilder.AppendLine("| Worktation logs |");
+            stringBuilder.AppendLine("+----------------+");
 
-            if (RegisteredPawns.Count > 0)
+            if (!tpSpotRegistry.NullOrEmpty())
             {
-                foreach (var records in RegisteredPawns)
+                foreach (Building cur in tpSpotRegistry)
                 {
-                    int intAge = (int)records.original.ageTracker.AgeBiologicalYears;
-
-                    stringBuilder.AppendLine("|\t|");
-                    stringBuilder.AppendLine("|\t+-[ " + records.original.Label + " ][ Meat : " + records.AAA + " ][ " + records.original.gender.GetLabel() + " ][ " + intAge + " ]");
-                    //stringBuilder.AppendLine("|\t+-[ " + records.original.NameStringShort + " ][ Meat : " + records.AAA + " ]");
-                    //stringBuilder.AppendLine("|\t+-[ " + records.original.gender.GetLabel() + " ][ " + intAge + " ][ Faction: " + records.original.Faction.Name + " ]");
+                    stringBuilder.AppendLine(cur.Label);
                 }
             }
-
-            if (IsFull())
-            {
-                stringBuilder.AppendLine("|");
-                stringBuilder.AppendLine("+---[ Max capacity reached(" + RegisteredPawnMax + ") ]");
-            }
-            else
-            {
-                stringBuilder.AppendLine("|");
-                stringBuilder.AppendLine("+---[ Right click for free venipuncture. ]");
-            }
-
             Dialog_MessageBox window = new Dialog_MessageBox(stringBuilder.ToString(), null, null, null, null, null, false);
             Find.WindowStack.Add(window);
         }
-
-        public override void PostSpawnSetup(bool respawningAfterLoad)
+        // Interface quality
+        private void ChangeQuality(bool better = true)
         {
-            bench = (Building)parent;
-            powerComp = bench.TryGetComp<CompPowerTrader>();
-            qualityComp = bench.TryGetComp<CompQuality>();
-            QualityWeightedBenchFactors();
-            //DumpProps();
+            ToolsQuality.ChangeQuality(building, compQuality, better);
+            /*
+            SetCooldownBase();
+            currentCooldown = Mathf.Min(cooldownBase, currentCooldown);
+            */
         }
-        private void DumpProps()
+        private void BetterQuality()
         {
-            Log.Warning("xploss:" + Props.XpLossPivotBase + Props.XpLossSpectrum + Props.XpLossMax +
-                    "xpRand:" + Props.XpRandBase + Props.XpRandSpectrum);
-         }
-        
-
-        private void QualityWeightedBenchFactors()
+            ChangeQuality(true);
+        }
+        private void WorseQuality()
         {
-            if (qualityComp == null)
-            {
-                XpLossPivot = Props.XpLossPivotBase;
-                XpRand = Props.XpRandBase;
-                Log.Warning("sad bench has no quality");
-            }
-
+            ChangeQuality(false);
+        }
+        private string QualityLog()
+        {
+            string Answer = string.Empty;
 
             // No spectrum, dumb math 8/7/6 5/4/3 2/1/0
-            XpLossPivot = Props.XpLossPivotBase - (float)qualityComp.Quality;
-
             // No spectrum, dumb math 4/3/3 2/2/2 1/1/1
+            //int nerfLevelNum = (int)XpLossPivot;
+            //int RNG = Rand.RangeInclusive(-(int)XpRand, (int)XpRand);
+            Answer = "nice";
 
-            XpRand = Props.XpRandBase - (float)qualityComp.Quality / 2;
-
+            return Answer;
         }
-
         public override void CompTick()
         {
-            if (!CheckBench())
+            base.CompTick();
+
+            Tools.Warn(" >>>TICK begin<<< ", prcDebug);
+            if (HasSpot)
             {
-                Log.Warning("Impossibru");
-                return;
-            }
 
-            if (!CheckPower())
-            {
-                //Log.Warning("nope power");
-                ResetProgress();
-                return;
-            }
-
-            // Active Work when bloodgiver
-            if (IsFull())
-            {
-                //Log.Warning("cant register anyone anymore")
-                return;
-            }
-
-            scanProgress++;
-
-            if (scanProgress>= scanWorkAmount)
-            {
-                ScanCommit();
-            }
-        }
-
-        public override void PostExposeData()
-        {
-            base.PostExposeData();
-
-            Scribe_References.Look(ref bloodGiver, "LTF_BloodGiver");
-            Scribe_Values.Look(ref scanProgress, "LTF_PhenotypeScanProgress");
-            
-            
-            Scribe_Collections.Look<LTF_PawnSnapshot>(ref RegisteredPawns, "LTF_snaps", LookMode.Deep, new object[0]);
-            if (Scribe.mode == LoadSaveMode.PostLoadInit && this.RegisteredPawns == null)
-            {
-                this.RegisteredPawns = new List<LTF_PawnSnapshot>();
-            }
-            
-
-            //Scribe_Collections.Look(ref RegisteredPawns, "LTF_snaps", LookMode.Undefined, new object[0]);
-
-            //Scribe_Deep.Look(ref RegisteredPawns, "LTF_snaps");
-            //Scribe_Collections.Look(ref RegisteredPawns, "LTF_snaps",LookMode.Reference);
-            //Scribe_Collections.Look(ref RegisteredPawns, "LTF_snaps", LookMode.Deep);
-            //Scribe_Collections.Look<LTF_PawnSnapshot>(ref RegisteredPawns, "LTF_snaps", LookMode.Deep);
-            //update
-
-        }
-
-
-
-        public override string CompInspectStringExtra()
-        {
-            string text = base.CompInspectStringExtra();
-            string result = string.Empty;
-
-            if (this.powerComp == null || !this.powerComp.PowerOn)
-            {
-                return null;
-            }
-
-            result += RegisteredPawns.Count + " scanned.";
-
-            if (HasTarget())
-            {
-                result += "\nScan target: " + bloodGiver.Label;
-                if (HasWorkTodo())
+                if (Tools.TwoTicksOneTrue())
                 {
-                    result += "\nProgress: " + Progress.ToStringPercent("F0") + " "+ ProgressString();
+                    foreach(Building cur in tpSpotRegistry)
+                    {
+                        if( (!ToolsBuilding.CheckBuilding(cur)) || (!ToolsBuilding.CheckPower(cur)) ){
+                            Comp_LTF_TpSpot comp_LTF_TpSpot  = cur?.TryGetComp<Comp_LTF_TpSpot>();
+                            if(comp_LTF_TpSpot!=null)
+                                comp_LTF_TpSpot.ResetFacility();
+                            tpSpotRegistry.Remove(cur);
+                        } 
+                    }
+
                 }
             }
 
-            if (!text.NullOrEmpty())
-            {
-                result = "\n" + text;
-            }
-            return result;
+            Tools.Warn(" >>>TICK end<<< ", prcDebug);
         }
-
-
-
-
 
         [DebuggerHidden]
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
-            if (CheckPower())
+            if (GotThePower)
             {
-                yield return new Command_Action
+                if (Prefs.DevMode)
                 {
-                    action = new Action(this.ShowReport),
-                    defaultLabel = "Registered pawns",
-                    defaultDesc = "Lists soon to be dead pawns",
-                    icon = ContentFinder<Texture2D>.Get("UI/Commands/LaunchReport", true)
-                };
-
-                if (RegisteredNum() > 0)
-                {
+                    // Debug process
                     yield return new Command_Action
                     {
-                        action = new Action(this.ResetRegistered),
-                        defaultLabel = "Forget pawns",
-                        defaultDesc = "No one will remain",
-                        icon = ContentFinder<Texture2D>.Get("UI/Buttons/Delete", true)
-                    };
-                }
-                
-                if (Prefs.DevMode && HasWorkTodo())
-                {
-                    yield return new Command_Action
-                    {
-                        defaultLabel = "Haaax: insta ready",
+                        icon = ((prcDebug) ? (MyGfx.DebugOnGz) : (MyGfx.DebugOffGz)),
+                        defaultLabel = "prc: " + Tools.DebugStatus(prcDebug),
+                        defaultDesc = "process debug",
                         action = delegate
                         {
-                            ProgressHax();
+                            prcDebug = Tools.WarnBoolToggle(prcDebug, "debug " + building.Label);
+                        }
+                    };
+                    // Debug gfx
+                    yield return new Command_Action
+                    {
+                        icon = ((gfxDebug) ? (MyGfx.DebugOnGz) : (MyGfx.DebugOffGz)),
+                        defaultLabel = "gfx: " + Tools.DebugStatus(gfxDebug),
+                        defaultDesc = "gfx debug",
+                        action = delegate
+                        {
+                            gfxDebug = Tools.WarnBoolToggle(gfxDebug, "debug " + building.Label);
+                        }
+                    };
+
+
+                    //debug log + hax activate
+                    if (prcDebug)
+                        yield return new Command_Action
+                        {
+                            //icon = ContentFinder<Texture2D>.Get("UI/Commands/HaxReady", true),
+                            icon = MyGfx.DebugLogGz,
+                            defaultLabel = "hax " + Tools.DebugStatus(Hax),
+                            defaultDesc = "$5,000 for you advert here.",
+                            action = delegate
+                            {
+                                Hax = Tools.WarnBoolToggle(Hax, "hax " + building.Label);
+                            }
+                        };
+
+                    // Hax Progress
+                    if (prcDebug && Hax)
+                    {
+                        /*
+                        if (currentCooldown != 0)
+                            yield return new Command_Action
+                            {
+                                icon = MyGfx.HaxEmptyGz,
+                                defaultLabel = currentCooldown + "->" + cooldownBase,
+                                defaultDesc = "force cooldown",
+                                action = delegate
+                                {
+                                    ForceCooldown();
+                                }
+                            };
+                        yield return new Command_Action
+                        {
+                            icon = MyGfx.HaxFullGz,
+                            defaultLabel = currentCooldown + "->0",
+                            defaultDesc = "reset cooldown",
+                            action = delegate
+                            {
+                                ResetCooldown();
+                            }
+                        };
+
+                        int minus10perc = (int)Mathf.Max(0, (currentCooldown - cooldownBase / 10));
+                        int plus10perc = (int)Mathf.Min(cooldownBase, (currentCooldown + cooldownBase / 10));
+
+                        yield return new Command_Action
+                        {
+                            icon = MyGfx.HaxSubGz,
+                            //defaultLabel = currentCooldown + "->" + minus10perc,
+                            defaultLabel = currentCooldown + "->" + plus10perc,
+                            defaultDesc = "-10%",
+                            action = delegate
+                            {
+                                SetCooldown(plus10perc);
+                            }
+                        };
+
+                        yield return new Command_Action
+                        {
+                            icon = MyGfx.HaxAddGz,
+                            defaultLabel = currentCooldown + "->" + minus10perc,
+                            //defaultLabel = currentCooldown + "->" + plus10perc,
+                            defaultDesc = "+10%",
+                            action = delegate
+                            {
+                                SetCooldown(minus10perc);
+                            }
+                        };
+                        */
+                    }
+
+                    // Hax quality
+                    if (prcDebug && Hax && (compQuality != null))
+                    {
+                        if (!ToolsQuality.BestQuality(compQuality))
+                            yield return new Command_Action
+                            {
+                                defaultLabel = compQuality.Quality.GetLabelShort() + "->" + ToolsQuality.BetterQuality(compQuality),
+                                defaultDesc = "Better quality",
+                                //icon = ContentFinder<Texture2D>.Get("UI/Commands/HaxReady", true),
+                                icon = MyGfx.HaxBetterGz,
+                                action = delegate
+                                {
+                                    BetterQuality();
+                                }
+                            };
+
+                        if (!ToolsQuality.WorstQuality(compQuality))
+                            yield return new Command_Action
+                            {
+                                defaultDesc = "Worse quality",
+                                defaultLabel = compQuality.Quality.GetLabelShort() + "->" + ToolsQuality.WorseQuality(compQuality),
+                                icon = MyGfx.HaxWorseGz,
+                                action = delegate
+                                {
+                                    WorseQuality();
+                                }
+                            };
+                    }
+                }
+
+                if (compQuality != null) {
+                    Texture2D qualityMat = ToolsGizmo.Quality2Mat(compQuality);
+                    float qualitySize = ToolsGizmo.Quality2Size(compQuality);
+
+                    yield return new Command_Action
+                    {
+                        //icon = ContentFinder<Texture2D>.Get("UI/Commands/CancelRegistry", true),
+                        icon = qualityMat,
+                        iconDrawScale = qualitySize,
+                        defaultLabel = "Quality matters",
+                        defaultDesc = QualityLog(),
+                        action = delegate
+                        {
+                            Tools.Warn("rip quality button", prcDebug);
                         }
                     };
                 }
+
+                // Registration/Registry Log
+                if (HasSpot)
+                {
+                    Texture2D LogMat = MyGfx.TpLogGz;
+                    String LogString = " tp registry";
+                    yield return new Command_Action
+                    {
+                        icon = LogMat,
+                        defaultLabel = LogString,
+                        defaultDesc = "Lists remote space manipulator. ok teleporters.",
+                        action = new Action(this.ShowReport),
+                    };
+                }
+
             }
         }
 
+        public override string CompInspectStringExtra()
+        {
+            if (!GotThePower)
+                return null;
+
+            if(tpSpotRegistry.NullOrEmpty())
+                return "Empty registry.";
+
+            string report = string.Empty;
+            string spotName = tpSpotRegistry.RandomElement().def.label;
+
+            report = ">"+tpSpotRegistry.Count+"<" + ' ' + spotName + ": ";
+            foreach (Building cur in tpSpotRegistry)
+            {
+                report += "[" + cur.Position.x + ";" + cur.Position.z + "];";
+            }
+            return report;
+            /*
+            string report = string.Empty;
+            foreach (Building cur in tpSpotRegistry)
+            {
+                report += ' '+cur.Label + "[" + cur.Position.x + ";" + cur.Position.z + "];";
+            }*/
+        }
         public override void PostDrawExtraSelectionOverlays()
         {
-            if (bloodGiver != null && bloodGiver.Map != null)
+            if (!tpSpotRegistry.NullOrEmpty())
             {
-                GenDraw.DrawLineBetween(this.parent.TrueCenter(), bloodGiver.TrueCenter());
+                foreach (Building cur in tpSpotRegistry)
+                    GenDraw.DrawLineBetween(this.parent.TrueCenter(), cur.TrueCenter());
             }
         }
     }

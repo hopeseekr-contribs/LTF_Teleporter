@@ -23,35 +23,46 @@ namespace LTF_Teleport
     [StaticConstructorOnStartup]
     public class MyGfx
     {
-        public static string overlayPath = "Things/Building/TpSpot/Overlay/";
+        public static string basePath = "Things/Building/TpSpot/";
+
+        
+        public static string underlayPath = basePath + "Underlay/";
+        public static string overlayPath = basePath + "Overlay/";
+        public static string warningPath = overlayPath + "Warning/";
 
         // Underlay
-        public static readonly Material SomethingM = MaterialPool.MatFrom(overlayPath + "Something", ShaderDatabase.MoteGlow, Color.green);
-        public static readonly Material NothingM = MaterialPool.MatFrom(overlayPath + "Nothing", ShaderDatabase.MoteGlow, Color.red);
+        public static readonly Material SomethingM = MaterialPool.MatFrom(underlayPath + "Something", ShaderDatabase.MoteGlow);
+        public static readonly Material NothingM = MaterialPool.MatFrom(underlayPath + "Nothing", ShaderDatabase.MoteGlow);
+        public static readonly Material NotReadyM = MaterialPool.MatFrom(underlayPath + "NotReady", ShaderDatabase.MoteGlow);
+        public static readonly Material UnderlayM = MaterialPool.MatFrom(underlayPath + "Underlay", ShaderDatabase.MoteGlow);
 
         // Warning
-        public static readonly Material OverweightM = MaterialPool.MatFrom(overlayPath + "Overweight", ShaderDatabase.MetaOverlay);
-        public static readonly Material CooldownM = MaterialPool.MatFrom(overlayPath + "Cooldown", ShaderDatabase.MetaOverlay);
-        public static readonly Material FacilityM = MaterialPool.MatFrom(overlayPath + "Facility", ShaderDatabase.MetaOverlay);
-        public static readonly Material FacilityPowerM = MaterialPool.MatFrom(overlayPath + "FacilityPower", ShaderDatabase.MetaOverlay);
+        public static readonly Material OverweightM = MaterialPool.MatFrom(warningPath + "Overweight", ShaderDatabase.MetaOverlay);
+        public static readonly Material CooldownM = MaterialPool.MatFrom(warningPath + "Cooldown", ShaderDatabase.MetaOverlay);
+        public static readonly Material FacilityM = MaterialPool.MatFrom(warningPath + "Facility", ShaderDatabase.MetaOverlay);
+        public static readonly Material FacilityPowerM = MaterialPool.MatFrom(warningPath + "FacilityPower", ShaderDatabase.MetaOverlay);
 
         // Overlay
         //        public static readonly Material Empty = MaterialPool.MatFrom(overlayPath + "Overlay", ShaderDatabase.MoteGlow);
-        public static readonly Material HumanoidFaction = MaterialPool.MatFrom(overlayPath + "Overlay", ShaderDatabase.MoteGlow, Color.yellow);
-        public static readonly Material Humanoid = MaterialPool.MatFrom(overlayPath + "Overlay", ShaderDatabase.MoteGlow, Color.red);
-        public static readonly Material AnimalFaction = MaterialPool.MatFrom(overlayPath + "Overlay", ShaderDatabase.MoteGlow, Color.magenta);
-        public static readonly Material Animal = MaterialPool.MatFrom(overlayPath + "Overlay", ShaderDatabase.MoteGlow, Color.blue);
-        public static readonly Material ItemFaction = MaterialPool.MatFrom(overlayPath + "Overlay", ShaderDatabase.MoteGlow, Color.cyan);
-        public static readonly Material Item = MaterialPool.MatFrom(overlayPath + "Overlay", ShaderDatabase.MoteGlow, Color.green);
+        public static readonly Material HumanoidFaction = MaterialPool.MatFrom(overlayPath + "Overlay", ShaderDatabase.MetaOverlay, Color.yellow);
+        public static readonly Material Humanoid = MaterialPool.MatFrom(overlayPath + "Overlay", ShaderDatabase.MetaOverlay, Color.red);
+        public static readonly Material AnimalFaction = MaterialPool.MatFrom(overlayPath + "Overlay", ShaderDatabase.MetaOverlay, Color.magenta);
+        public static readonly Material Animal = MaterialPool.MatFrom(overlayPath + "Overlay", ShaderDatabase.MetaOverlay, Color.blue);
+        public static readonly Material ItemFaction = MaterialPool.MatFrom(overlayPath + "Overlay", ShaderDatabase.MetaOverlay, Color.cyan);
+        public static readonly Material Item = MaterialPool.MatFrom(overlayPath + "Overlay", ShaderDatabase.MetaOverlay, Color.green);
 
         // public static readonly Material EmptyTile = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Transparent);
-        public static readonly Graphic Vanish = GraphicDatabase.Get<Gfx.Graphic_Slideshow>(overlayPath + "Vanish", ShaderDatabase.MetaOverlay);
+        public static readonly Graphic ActiveAnim = GraphicDatabase.Get<GfxSlideShow.Graphic_Slideshow>(overlayPath + "TpAnim", ShaderDatabase.MetaOverlay);
+        public static readonly Graphic EndAnim = GraphicDatabase.Get<GfxSlideShow.Graphic_Slideshow>(overlayPath + "Vanish", ShaderDatabase.MetaOverlay);
 
         //Gizmo
         private static string GizmoPath = "UI/Commands/";
+
         private static string DebugPath = GizmoPath + "Debug/";
         private static string HaxPath = GizmoPath + "Hax/";
+        private static string BenchPath = GizmoPath + "TpBench/";
         private static string QualityPath = GizmoPath + "Quality/";
+
 
         public static Texture2D DebugOnGz = ContentFinder<Texture2D>.Get(DebugPath + "DebugOn", true);
         public static Texture2D DebugOffGz = ContentFinder<Texture2D>.Get(DebugPath + "DebugOff", true);
@@ -63,6 +74,15 @@ namespace LTF_Teleport
         public static Texture2D HaxEmptyGz = ContentFinder<Texture2D>.Get(HaxPath + "HaxEmpty", true);
         public static Texture2D HaxWorseGz = ContentFinder<Texture2D>.Get(HaxPath + "HaxWorse", true);
         public static Texture2D HaxBetterGz = ContentFinder<Texture2D>.Get(HaxPath + "HaxBetter", true);
+
+        public static Texture2D TpLogGz = ContentFinder<Texture2D>.Get(BenchPath + "TpLog", true);
+        public static Texture2D NextTpGz = ContentFinder<Texture2D>.Get(BenchPath + "NextTp", true);
+        public static Texture2D FullTpGz = ContentFinder<Texture2D>.Get(BenchPath + "FullTp", true);
+        public static Texture2D EmptyTpGz = ContentFinder<Texture2D>.Get(BenchPath + "EmptyTp", true);
+
+        public static Texture2D QualityBadGz = ContentFinder<Texture2D>.Get(QualityPath + "Bad", true);
+        public static Texture2D QualityGoodGz = ContentFinder<Texture2D>.Get(QualityPath + "Good", true);
+        public static Texture2D QualityNormalGz = ContentFinder<Texture2D>.Get(QualityPath + "Normal", true);
 
         public static Material Status2OverlayMaterial(Comp_LTF_TpSpot comp, bool FactionMajority, bool debug = false)
         {
@@ -142,11 +162,30 @@ namespace LTF_Teleport
         public static Material Status2UnderlayMaterial(Comp_LTF_TpSpot comp, bool debug = false)
         {
             Material Answer = null;
-            string checkIf = string.Empty;
+            string what = "Gfx - Under: ";
 
-            Tools.Warn("Underlay Item:" + Tools.OkStr(comp.HasItems) + " gfx", debug);
-            Answer = ((comp.HasItems) ? (MyGfx.SomethingM) : (MyGfx.NothingM));
+            if (comp.StatusReady)
+            {
+                Answer = SomethingM;
+                Tools.Warn(what + "something",debug);
+                return Answer;
+            }
 
+            if ((comp.HasNothing) && (comp.HasPoweredFacility))
+            {
+                Answer = NothingM;
+                Tools.Warn(what + "nothing", debug);
+                return Answer;
+            }
+
+            if (comp.HasItems)
+            {
+                Answer = NotReadyM;
+                Tools.Warn(what + "notready", debug);
+                return Answer;
+            }
+
+            Tools.Warn(what+"null", debug);
             return Answer;
         }
 

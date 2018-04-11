@@ -7,6 +7,13 @@ namespace LTF_Teleport
 {
     public class Tools
     {
+        public static bool TwoTicksOneTrue(int period=60, bool debug=false)
+        {
+            Tools.Warn("°°°°°°2t1true" + (int)((Time.realtimeSinceStartup * 100) % period), debug);
+            return ( (int)((Time.realtimeSinceStartup * 100) % period) == 1);
+        }
+
+//        public static bool 
 
         //String
         public static string OkStr(bool boolean = false)

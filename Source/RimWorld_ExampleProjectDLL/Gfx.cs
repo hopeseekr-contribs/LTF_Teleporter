@@ -33,12 +33,19 @@ namespace LTF_Teleport
             loop
         };
 
+        public enum AnimStep
+        {
+            na,
+            begin,
+            active,
+            end,
+        };
+
         public enum Layer 
         {
             over = 4,
             under = -1,
         };
-
 
 
         private static float UpdateOpacity(Thing thing, OpacityWay opacityWay = OpacityWay.no, float opacity=1, bool debug=false)
@@ -71,9 +78,10 @@ namespace LTF_Teleport
             return newOpacity;
         }
 
-        public static void DrawTickRotating(Thing thing, Material mat, float x, float z, float angle=0f, float opacity=1, Layer myLayer = Layer.over,  bool debug = false)
+        public static void DrawTickRotating(Thing thing, Material mat, float x, float z, float size=1f, float angle=0f, float opacity=1, Layer myLayer = Layer.over, bool debug = false)
         {
-            Vector3 dotS = new Vector3(1f, 1f, 1f);
+            Vector3 dotS = new Vector3(size, 1f, size); 
+
             Matrix4x4 matrix = default(Matrix4x4);
             Vector3 dotPos = thing.TrueCenter();
 
@@ -86,27 +94,12 @@ namespace LTF_Teleport
             if (opacity!=1)
                 fadedMat = FadedMaterialPool.FadedVersionOf(mat, opacity);
 
-            Tools.Warn("tickRot angle: " + angle + "; opa:"+opacity, debug);
+            Tools.Warn("Drawing - ang: " + angle + "; opa:"+opacity, debug);
             matrix.SetTRS(dotPos, Quaternion.AngleAxis(angle, Vector3.up), dotS);
             Graphics.DrawMesh(MeshPool.plane10, matrix, fadedMat, 0);
-        }
-        /*
-        public static void DrawTickRotating(Thing thing, Material dotM, float x, float z, Layer myLayer = Layer.over, bool debug=false)
-        {
-            Vector3 dotS = new Vector3(1f, 1f, 1f);
-            Matrix4x4 matrix = default(Matrix4x4);
-            Vector3 dotPos = thing.TrueCenter();
 
-            dotPos.x += x;
-            dotPos.z += z;
-            dotPos.y += (float)myLayer;
-            float angle = (float)360 * Gfx.LoopFactorOne(thing);
-
-            Tools.Warn("tickRot angle: " + angle, debug);
-            matrix.SetTRS(dotPos, Quaternion.AngleAxis(angle, Vector3.up), dotS);
-            Graphics.DrawMesh(MeshPool.plane10, matrix, dotM, 0);
+            
         }
-        */
         public static void DrawRandRotating(Thing thing, Material dotM, float x, float z, Layer myLayer = Layer.over, bool debug=false)
         {
             Vector3 dotPos = thing.DrawPos;
@@ -272,7 +265,7 @@ namespace LTF_Teleport
             float num = (Time.realtimeSinceStartup + 397f * (float)(thing.thingIDNumber % 571)) * 4f;
             float num2 = ((float)Math.Sin((double)num) + 1f) * 0.5f;
 
-            Tools.Warn("pulse ans!" + num2 + "; mask: "+mask+"; masked: " +num%mask);
+            Tools.Warn("pulse opacity: !" + num2 + "; mask: "+mask+"; masked: " +num%mask, debug);
             num2 = num2 % mask;
             
             return num2;
@@ -283,7 +276,7 @@ namespace LTF_Teleport
             float num = (Time.realtimeSinceStartup + 397f * (float)(thing.thingIDNumber % 571)) * 4f;
             float num2 = ((float)Math.Tan((double)num) + 1f) * 0.5f;
             //num2 = (0.3f + num2 * 0.7f)%1;
-            Tools.Warn("loop ans!" + num2 + "; mask: " + mask + "; masked: " + num % mask,debug);
+            Tools.Warn("loop factor one" + num2 + "; mask: " + mask + "; masked: " + num % mask,debug);
             num2 = num2 % mask;
             return num2;
         }
@@ -303,16 +296,16 @@ namespace LTF_Teleport
 
             float num = (Time.realtimeSinceStartup + timePhaseShiftValue * (float)(thing.thingIDNumber % thingPhaseShiftValue)) * speedUp;
             float num2 = ((float)Math.Sin((double)num) + 1f) * 0.5f;
-            Tools.Warn("pulse ans!" + num2 + "; mask: " + mask + "; masked: " + num % mask,debug);
+            Tools.Warn("pulse factor one: " + num2 + "; mask: " + mask + "; masked: " + num % mask,debug);
             num2 = num2 % mask;
 
             return num2;
         }
-        public static float RealLinear(Thing thing, float speedUp, float mask = 1f, bool debug = false)
+        public static float RealLinear(Thing thing, float speedUp, bool debug = false)
         {
             float timePhaseShiftValue = 397f; float thingPhaseShiftValue = 571f;
 
-            float num = (Time.realtimeSinceStartup + timePhaseShiftValue * (float)(thing.thingIDNumber % thingPhaseShiftValue)) * 10/speedUp * 20;
+            float num = (Time.realtimeSinceStartup + timePhaseShiftValue * (float)(thing.thingIDNumber % thingPhaseShiftValue)) * speedUp * 20;
             float num2 = (num % 1000) / 1000;
 
             Tools.Warn("RealLinear: " + num + "->" + num2, debug);
@@ -332,130 +325,5 @@ namespace LTF_Teleport
             return (num2 % mask);
         }
 
-        public class Graphic_Slideshow : Graphic_Collection
-        {
-            private const int BaseTicksPerFrameChange = 20;
-            private const int ExtraTicksPerFrameChange = 10;
-
-            private const float MaxOffset = 0.05f;
-            //int frameRef = 0;
-            int frameMax = 23;
-            int frameI = 0;
-
-            bool isInitialized = false;
-
-            public override Material MatSingle
-            {
-                get
-                {
-                    //return this.subGraphics[Rand.Range(0, this.subGraphics.Length)].MatSingle;
-                    return this.subGraphics[0].MatSingle;
-                }
-            }
-            public void Init()
-            {
-                //frameRef = Find.TickManager.TicksGame;
-                frameI = 0;
-                isInitialized = false;
-                if (subGraphics != null)
-                {
-                    frameMax = this.subGraphics.Length;
-                    //Log.Warning("frameM:" + frameMax + " check:" + this.subGraphics.Length);
-                    isInitialized = true;
-                }
-
-                //% this.subGraphics.Length; ;
-                //Log.Warning(">>Init "+isInitialized);
-            }
-            public override void DrawWorker(Vector3 loc, Rot4 rot, ThingDef thingDef, Thing thing, float extraRotation)
-            {
-
-                if (!isInitialized) Init();
-
-                if (thingDef == null)
-                {
-                    Log.ErrorOnce("slide DrawWorker with null thingDef: " + loc, 3427324);
-                    return;
-                }
-                if (this.subGraphics == null)
-                {
-                    Log.ErrorOnce("Graphic_slide has no subgraphics " + thingDef, 358773632);
-                    return;
-                }
-
-                if (frameI >= frameMax)
-                {
-                    Comp_LTF_TpSpot tpSpot = null;
-                    tpSpot = getTpSpot(thing);
-                    if (tpSpot == null)
-                    {
-                        Log.Warning("can tpspot");
-                        return;
-                    }
-
-                    Unset();
-                    tpSpot.StopVanish();
-
-                    return;
-                }
-
-                Graphic graphic = this.subGraphics[frameI];
-                Vector3 dotS = new Vector3(1f, 1f, 1f);
-
-                Vector3 drawPos = thing.DrawPos;
-                if (drawPos == null)
-                {
-                    Log.Warning("null pos draw");
-                    return;
-                }
-
-                // higher than ground to be visible
-                drawPos.y += 4;
-                //drawPos.y += 0.046875f;
-
-                //Vector3 dotPos = thing.Position.ToVector3Shifted();
-
-                Matrix4x4 matrix = default(Matrix4x4);
-                matrix.SetTRS(drawPos, Quaternion.identity, dotS);
-                Graphics.DrawMesh(MeshPool.plane10, matrix, graphic.MatSingle, 0);
-                //Log.Warning("Drew " + frameI + "/" + frameMax);
-
-                frameI += 1;
-
-
-            }
-            private Comp_LTF_TpSpot getTpSpot(Thing thing)
-            {
-                Building building = thing as Building;
-                if (building == null)
-                {
-                    return null;
-                }
-
-                Comp_LTF_TpSpot tpSpot = null;
-                tpSpot = building.TryGetComp<Comp_LTF_TpSpot>();
-
-                return tpSpot;
-            }
-            
-            private void Unset()
-            {
-                //willDrawNextTick = false;
-                isInitialized = false;
-                frameI = 0;
-                Log.Warning("Unset");
-            }
-            public override string ToString()
-            {
-                return string.Concat(new object[]
-                {
-                "Flicker(subGraphic[0]=",
-                this.subGraphics[0].ToString(),
-                ", count=",
-                this.subGraphics.Length,
-                ")"
-                });
-            }
-        }
     }
 }

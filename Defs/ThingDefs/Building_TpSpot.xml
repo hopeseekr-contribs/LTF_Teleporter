@@ -74,36 +74,67 @@ Requires a teleport bench.</description>
 		<stuffCategories>
 			<li>Metallic</li>
 		</stuffCategories>
-		<costStuffCount>150</costStuffCount>
+		<costStuffCount>100</costStuffCount>
 		<costList>
-			<Steel>50</Steel>
+			<Steel>20</Steel>
 			<Uranium>5</Uranium>
-			<Component>2</Component>
+			<Component>1</Component>
 		</costList>
 
     <comps>
-	<li Class="CompProperties_Power">
-		<compClass>CompPowerTrader</compClass>
-		<basePowerConsumption>120</basePowerConsumption>
-		<startElectricalFires>true</startElectricalFires>
-	</li>
+		<li Class="CompProperties_Explosive">
+			<explosiveRadius>2.66</explosiveRadius>
+			<explosiveDamageType>EMP</explosiveDamageType>
+			<startWickHitPointsPercent>0.05</startWickHitPointsPercent>
+			<wickTicks>
+				<min>15</min>
+				<max>70</max>
+			</wickTicks>
+		</li>
+		<li Class="CompProperties_Power">
+			<compClass>CompPowerTrader</compClass>
+			<basePowerConsumption>120</basePowerConsumption>
+			<startElectricalFires>true</startElectricalFires>
+		</li>
 	
-	<li Class="CompProperties_Flickable"/>
-	<li Class="CompProperties_Breakdownable"/>
-	<!-- <li><compClass>CompQuality</compClass></li> -->
+		<li Class="CompProperties_Flickable"/>
+		<li Class="CompProperties_Breakdownable"/>
+		<!-- <li><compClass>CompQuality</compClass></li> -->
 	
-	<li Class="CompProperties_AffectedByFacilities">
-        <linkableFacilities>
-			<li>LTF_TpBench</li>
-        </linkableFacilities>
-	</li>
+		<li Class="CompProperties_AffectedByFacilities">
+			<linkableFacilities>
+				<li>LTF_TpBench</li>
+			</linkableFacilities>
+		</li>
     
-	<li Class="LTF_Teleport.CompProperties_LTF_TpSpot">
-		<weightBase>50</weightBase>
-		<weightSpectrum>160</weightSpectrum>
-		<cooldownBase>3600</cooldownBase>
-		<cooldownSpectrum>-2400</cooldownSpectrum>
-	</li>
+		<li Class="LTF_Teleport.CompProperties_LTF_TpSpot">
+			<weightBase>50</weightBase>
+			<weightSpectrum>160</weightSpectrum>
+			<cooldownBase>3600</cooldownBase>
+			<cooldownSpectrum>-2400</cooldownSpectrum>
+		</li>
+	
+		<li Class="CompProperties_Glower">
+			<glowRadius>1</glowRadius>
+			<!-- pink -->
+			<glowColor>(138,43,226,0)</glowColor>
+		</li>
+
+		<!-- Allows to target something -->
+		<li Class="CompProperties_Targetable">
+			<compClass>LTF_Teleport.CompTargetable_Building</compClass>
+		</li>
+		
+		<!-- Associates object to effects -->
+		<li Class="CompProperties_Usable">
+			<useJob>UseItem</useJob>
+			<useLabel>Link</useLabel>
+		</li>
+
+		<!-- target effect -->
+		<li>
+			<compClass>LTF_Teleport.CompTargetEffect_TpSpotLink</compClass>
+		</li>
 	
     </comps>
 

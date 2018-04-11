@@ -22,14 +22,18 @@ namespace LTF_Teleport
         Vector3 buildingPos;
         String buildingName = string.Empty;
 
+        Building linkedTpSpot = null;
+
         /* Comp */
         /******************/
-        public CompPowerTrader compPowerTrader;
-        
-        public CompQuality compQuality;
+        public CompPowerTrader compPowerTrader=null;
+        public CompQuality compQuality=null;
         // TpBench required
-        public CompAffectedByFacilities compAffectedByFacilities;
-        public CompPowerTrader compPowerFacility;
+        public CompAffectedByFacilities compAffectedByFacilities=null;
+        public CompPowerTrader compPowerFacility=null;
+        public Comp_TpBench comp_TpBench=null;
+        // Linked tpspot maybe
+        public Comp_LTF_TpSpot linkedComp_LTF_TpSpot = null;
         //        private CompFlickable flickComp;
 
         /* Caracteristics */
@@ -51,6 +55,7 @@ namespace LTF_Teleport
         // Can be a dead animal
         Building facility = null;
         Pawn standingUser = null;
+        bool BenchManaged = false;
         [Flags]
         public enum BuildingStatus
         {
@@ -99,9 +104,16 @@ namespace LTF_Teleport
 
         bool FactionMajority = false;
 
-        public bool drawVanish = false;
+        public Gfx.AnimStep TpOutStatus = Gfx.AnimStep.na;
+        int beginSequenceFrameLength = 120;
+        int beginSequenceI = 0;
+
+        int FrameSlowerMax = 3;
+        int FrameSlower = 0;
+
         public bool drawUnderlay = true;
         public bool drawOverlay = true;
+        float myOpacity = 1f;
 
         /* Debug */
         /**********/
@@ -169,11 +181,32 @@ namespace LTF_Teleport
         {
             get
             {
-                return (Dependencies.TickCheckFacilityPower(facility, compPowerFacility, prcDebug));
+                //return (Dependencies.TickCheckFacilityPower(facility, compPowerFacility, prcDebug));
+                return (Dependencies.TickCheckFacilityPower(facility, compPowerFacility, false));
             }
         }
-        private void ResetFacility()
+
+        public bool AreYouMyRegisteredFacility(Building daddy)
         {
+            return (daddy == facility);
+        }
+
+        public void Link(Building building, Comp_LTF_TpSpot newComp)
+        {
+            linkedTpSpot = building;
+            linkedComp_LTF_TpSpot = newComp;
+        }
+        public void Unlink()
+        {
+            linkedComp_LTF_TpSpot = null;
+            linkedTpSpot = null;
+        }
+
+        public void ResetFacility()
+        {
+            BenchManaged = false;
+            compPowerFacility = null;
+            comp_TpBench = null;
             facility = null;
         }
 
@@ -416,12 +449,84 @@ namespace LTF_Teleport
             }
         }
         
-
-        //Gfx interface
-        public void StopVanish()
+        public bool TpOutEnd
         {
-            drawVanish = false;
+            get {
+                return (TpOutStatus == Gfx.AnimStep.end);
+            }
         }
+        public bool TpOutBegin
+        {
+            get
+            {
+                return (TpOutStatus == Gfx.AnimStep.begin);
+            }
+        }
+        public bool TpOutActive
+        {
+            get
+            {
+                return (TpOutStatus == Gfx.AnimStep.active);
+            }
+        }
+        public bool TpOutNa
+        {
+            get
+            {
+                return (TpOutStatus == Gfx.AnimStep.na);
+            }
+        }
+        private void SetBeginAnimLength()
+        {
+            beginSequenceI = beginSequenceFrameLength;
+        }
+        public void BeginAnimSeq()
+        {
+            TpOutStatus = Gfx.AnimStep.begin;
+            SetBeginAnimLength();
+        }
+        public void IncBeginAnim(bool debug=false)
+        {
+            //AnimStatus(debug);
+            beginSequenceI--;
+            if (beginSequenceI <= 0)
+            {
+                TpOutNextAnim();
+                SoundDef.Named("LTF_TpSpotOut").PlayOneShotOnCamera(parent.Map);
+            }
+            //AnimStatus(debug);
+        }
+        public void AnimStatus(bool debug=false)
+        {
+            Tools.Warn("AnimStatus=>"+TpOutStatus + ":" + beginSequenceI + "/" + beginSequenceFrameLength, debug);
+        }
+        public float AnimOpacity
+        {
+            get
+            {
+                return myOpacity;
+            }
+        }
+        public void SetFrameSlower() {
+            FrameSlower = FrameSlowerMax;
+        }
+        public int IncFrameSlower()
+        {
+            FrameSlower--;
+            FrameSlower = Mathf.Max(0, FrameSlower);
+            
+            return FrameSlower;
+        }
+
+        public void TpOutNextAnim()
+        {
+            //if (TpOutStatus == Gfx.AnimStep.na)TpOutStatus = Gfx.AnimStep.begin;
+            if (TpOutStatus == Gfx.AnimStep.begin)      TpOutStatus = Gfx.AnimStep.active;
+            else if (TpOutStatus == Gfx.AnimStep.active)TpOutStatus = Gfx.AnimStep.end;
+            else if (TpOutStatus == Gfx.AnimStep.end)   TpOutStatus = Gfx.AnimStep.na;
+            SetFrameSlower();
+        }
+
         //public void StartVanish(){drawVanish = true;}
 
         // Debug 
@@ -474,7 +579,7 @@ namespace LTF_Teleport
         private bool StatusHasItem { get { return !StatusNoItem; } }
         public bool StatusOverweight { get { return HasStatus(BuildingStatus.overweight); } }
         public bool StatusChillin { get { return HasStatus(BuildingStatus.cooldown); } }
-        private bool StatusReady { get { return HasStatus(BuildingStatus.capable); } }
+        public bool StatusReady { get { return HasStatus(BuildingStatus.capable); } }
         string StatusExplanation()
         {
             string bla = string.Empty;
@@ -537,62 +642,106 @@ namespace LTF_Teleport
                 return;
             }
 
+            /*
             Tools.Warn(
                 " pulse: " + Gfx.PulseFactorOne(parent) * 360 +
                 "; Loop: " + Gfx.LoopFactorOne(parent) * 360 +
-                "; %real:" + (Gfx.RealLinear(parent, currentWeight, 1, gfxDebug) * 360)
+                "; %real:" + (Gfx.RealLinear(parent, 15 + currentWeight * 5, gfxDebug) * 360)
                 , gfxDebug);
-            
+                */
 
             Material overlay = null;
             Material underlay = null;
+            Material underlay2 = null;
             Material warning = null;
 
-            if(drawUnderlay)
-                underlay = MyGfx.Status2UnderlayMaterial(this, gfxDebug);
-
-            if (drawOverlay)
+            // >>>> Calculate mat
+            // calculate underlay
+            if (drawUnderlay)
             {
-                if(StatusReady)
-                {
-                    //Tools.Warn("gfx : : :::::::: Ready", gfxDebug);
-                    overlay = MyGfx.Status2OverlayMaterial(this, FactionMajority, gfxDebug);
-                }
-                else
-                {
-                    //Tools.Warn("gfx: : ::::: :::::: not readdyyyyy ffs", gfxDebug);
-                    warning = MyGfx.Status2WarningMaterial(this, gfxDebug);
-                }
+                if ((HasItems) || ((HasNothing) && (HasPoweredFacility)) || (StatusReady))
+                    underlay = MyGfx.Status2UnderlayMaterial(this, gfxDebug);
+
+                underlay2 = MyGfx.UnderlayM;
+                Tools.Warn("Underlay calculating - 1: " + (underlay != null) + "; 2: "+ (underlay2!=null), gfxDebug);
             }
 
-            //MyGfx.OpacityWay opacityWay = MyGfx.OpacityWay.no;
+            // calculate Overlay
+            if (drawOverlay)
+            {
+                //if( (!TpOutNa) && (TpOutBegin) )
+                if (TpOutBegin)
+                    overlay = MyGfx.Status2OverlayMaterial(this, FactionMajority, gfxDebug);
 
-            // Underlay
-            float underlayAngle = ((!HasItems) ? Gfx.RealLinear(parent, 1, 10+Rand.Range(0,3), gfxDebug) : (Gfx.PulseFactorOne(parent) ));
-            if (drawUnderlay && underlay != null)
-                Gfx.DrawTickRotating(parent, underlay, 0, 0, underlayAngle * 360, 1, Gfx.Layer.under, gfxDebug);
-            //Gfx.DrawTickRotating(parent, underlay, 0, 0, underlayAngle*360, Gfx.VanillaPulse(parent),Gfx.Layer.under, gfxDebug);
-            //    Gfx.DrawPulse(parent, underlay, MeshPool.plane10, Gfx.Layer.under, Gfx.OpacityWay.loop, gfxDebug);
+                if ((!StatusReady) && (HasItems))
+                    warning = MyGfx.Status2WarningMaterial(this, gfxDebug);
 
+                Tools.Warn("Overlay calculating - warning: " + (warning != null) + "; anim: " + (overlay != null), gfxDebug);
+            }
 
-            //Gfx.DrawRandRotating(parent, underlay, 0, 0, Gfx.Layer.under, gfxDebug);
+            // >>>> Draw mat
+            // draw Underlay
+            if (drawUnderlay)
+            {
+                if (underlay != null)
+                {
+                    float underlayOpacity = 1f;
 
-            //Overlay
+                    float underlayAngle = Gfx.PulseFactorOne(parent);
+
+                    if (StatusReady)
+                        underlayOpacity = .8f + .2f * (Rand.Range(0, 1f));
+                    else if ((HasNothing && HasPoweredFacility))
+                        underlayOpacity = .6f + .3f * (Rand.Range(0, 1f));
+                    if (HasItems)
+                        underlayOpacity = .5f + .2f * (Rand.Range(0, 1f));
+
+                    Gfx.DrawTickRotating(parent, underlay, 0, 0, 1, underlayAngle * 360, underlayOpacity, Gfx.Layer.under, gfxDebug);
+                }
+
+                if (underlay2 != null)
+                {
+                    float underlay2Opacity = Gfx.VanillaPulse(parent);
+                    float underlay2Angle = Gfx.RealLinear(parent, 15 + currentWeight * 5, gfxDebug);
+
+                    Gfx.DrawTickRotating(parent, underlay2, 0, 0, 1, underlay2Angle * 360, underlay2Opacity, Gfx.Layer.under, gfxDebug);
+                }
+                Tools.Warn("Underlay drew - 1: " + (underlay != null) + "; 2: " + (underlay2 != null), gfxDebug);
+            }
+            //draw Overlay
             if (drawOverlay)
             {
                 if (!StatusReady && warning != null)
                     Gfx.PulseWarning(building, warning);
 
-                if (StatusHasItem && overlay != null)
-                    Gfx.DrawTickRotating(parent, overlay, 0, 0, Gfx.LoopFactorOne(parent)*360, 1, Gfx.Layer.over, gfxDebug);
-            }
+                /* debug first
+                if (!StatusHasItem)
+                    return;
+                */
 
-            if (drawVanish)
-            {
-                Vector3 drawPos = this.parent.DrawPos;
-                MyGfx.Vanish.Draw(drawPos, Rot4.North, this.parent, 0f);
+                if ((TpOutBegin) && (overlay != null))
+                {
+                    float swirlSize = Gfx.VanillaPulse(parent)*1.5f;
+                    Gfx.DrawTickRotating(parent, overlay, 0, 0, swirlSize, Gfx.LoopFactorOne(parent) * 360, 1, Gfx.Layer.over, gfxDebug);
+                }
+
+                if (TpOutActive)
+                {
+                    //MyGfx.ActiveAnim.Draw(parent.DrawPos, Rot4.North, this.parent, 0f);
+                    //MyGfx.ActiveAnim.Draw(parent.DrawPos, Rot4.North, this.parent, 0.027f*Rand.Range(-1,1)*360);
+                    MyGfx.ActiveAnim.Draw(parent.DrawPos, Rot4.North, this.parent, 0.027f * Rand.Range(-1, 1) * 360);
+                }
+                else if (TpOutEnd)
+                {
+                    Vector3 vec = parent.DrawPos;
+                    vec.z += .3f;
+                    MyGfx.EndAnim.Draw(vec, Rot4.North, this.parent, 0f);
+                }
+
+                Tools.Warn("Overlay drew - warning: " + (warning != null) + "; anim: " + (overlay != null), gfxDebug);
             }
         }
+
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
             //Building
@@ -608,6 +757,7 @@ namespace LTF_Teleport
             facility = ToolsBuilding.GetFacility( compAffectedByFacilities,  prcDebug);
             //Facility power comp
             compPowerFacility = facility?.TryGetComp<CompPowerTrader>();
+            comp_TpBench = facility?.TryGetComp<Comp_TpBench>();
 
             SetWeightBase(compQuality);
             SetCooldownBase(compQuality);
@@ -616,6 +766,8 @@ namespace LTF_Teleport
         public override void CompTick()
         {
             base.CompTick();
+
+            Tools.Warn(" >>>TICK begin<<< ", prcDebug);
 
             if (!ToolsBuilding.CheckBuilding(building))
             {
@@ -629,6 +781,12 @@ namespace LTF_Teleport
             // Power - Will return if status
             tellMe += "Power: " + Tools.OkStr(StatusNoPower)+"; ";
             if (StatusNoPower) {
+                if (HasRegisteredFacility)
+                {
+                    if (comp_TpBench != null && building != null)
+                        comp_TpBench.RemoveSpot(building);
+                    ResetFacility();
+                }
                 Tools.Warn(tellMe, prcDebug);
                 return;
             }
@@ -641,6 +799,7 @@ namespace LTF_Teleport
                 facility = ToolsBuilding.GetFacility(compAffectedByFacilities, prcDebug);
                 //Facility power comp
                 compPowerFacility = facility?.TryGetComp<CompPowerTrader>();
+                comp_TpBench = facility?.TryGetComp<Comp_TpBench>();
                 tellMe += "Found: " + Tools.OkStr(HasRegisteredFacility) + ((HasRegisteredFacility)?(facility.LabelShort) :("nothing"))+ "; ";
             }
             if (StatusNoFacility)
@@ -654,18 +813,28 @@ namespace LTF_Teleport
             tellMe += "FacilityPower: " + Tools.OkStr(HasPoweredFacility);
             if (!HasPoweredFacility)
             {
+                ResetFacility();
                 compPowerFacility = facility?.TryGetComp<CompPowerTrader>();
                 Tools.Warn(tellMe, prcDebug);
                 return;
             }
 
             bool belongs = Dependencies.CheckBuildingBelongsFacility(compAffectedByFacilities, facility, prcDebug);
-            tellMe += "Belongs to " + facility.Label + "?" + Tools.OkStr(belongs);
+            tellMe += "Belongs to " + facility.Label + ':'+facility.ThingID+"?" + Tools.OkStr(belongs);
             if (!belongs)
                 return;
 
+            if (!BenchManaged)
+            {
+                comp_TpBench = facility?.TryGetComp<Comp_TpBench>();
+                if (comp_TpBench != null)
+                {
+                    comp_TpBench.AddSpot(building);
+                }
+            }
             
 
+            Tools.Warn("TICK checking: " + tellMe, prcDebug);
             CheckItems();
 
             if (StatusChillin)
@@ -684,11 +853,9 @@ namespace LTF_Teleport
             }
 
             if ((StatusChillin) || (StatusOverweight) || (StatusNoItem)) {
-                Tools.Warn(tellMe, prcDebug);
+                Tools.Warn("TICK exit bc not ready: "+tellMe, prcDebug);
                 return;
             }
-            
-            
 
             if (StatusReady)
             {
@@ -697,7 +864,24 @@ namespace LTF_Teleport
                 //
             }
 
-            Tools.Warn(tellMe, prcDebug);
+            tellMe += StatusExplanation();
+            AnimStatus(prcDebug);
+
+            if (TpOutBegin)
+            {
+                IncBeginAnim(prcDebug);
+            }
+
+            if (TpOutActive)
+            {
+                myOpacity = .6f + .4f*Rand.Range(0, 1);
+            }
+            else
+            {
+                myOpacity = 1;
+            }
+
+            Tools.Warn("TICK End: "+tellMe, prcDebug);
         }
         public override void PostExposeData()
         {
@@ -759,16 +943,18 @@ namespace LTF_Teleport
                             gfxDebug = Tools.WarnBoolToggle(gfxDebug, "debug " + building.Label);
                         }
                     };
+
+                    yield return new Command_Action
+                    {
+                        defaultLabel = "tpOut " + TpOutStatus + "->" + TpOutBegin,
+                        action = delegate
+                        {
+                            BeginAnimSeq();
+                        }
+                    };
                     if (gfxDebug)
                     {
-                        yield return new Command_Action
-                        {
-                            defaultLabel = "vanish " + drawVanish + "->" + !drawVanish,
-                            action = delegate
-                            {
-                                drawVanish = !drawVanish;
-                            }
-                        };
+  
                         yield return new Command_Action
                         {
                             defaultLabel = "under " + drawUnderlay + "->" + !drawUnderlay,
