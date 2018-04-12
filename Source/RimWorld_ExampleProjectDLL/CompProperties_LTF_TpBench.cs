@@ -8,24 +8,16 @@
  */
 using Verse;
 
-namespace LighterThanFast
+namespace LTF_Teleport
 {
-	public class CompProperties_LTF_Phenodrill : CompProperties
+	public class CompProperties_TpBench : CompProperties
 	{
-        public float XpLossPivotBase;// = 8f;
-        public float XpLossSpectrum;// = -8f;
-        // No spectrum, dumb math 8/7/6 5/4/3 2/1/0
-        public float XpLossMax;// = 5f;
+        public float FacilityCapacitySpectrum = 16f;
+        public float FacilityCapacityBase = 1f;
 
-        public float XpRandBase;// = 4f;
-        public float XpRandSpectrum;// = -4f;
-        // No spectrum, dumb math 4/3/3 2/2/2 1/1/1
-
-        public float ScanRadius;// = 20f;
-
-        public CompProperties_LTF_Phenodrill()
+        public CompProperties_TpBench()
 		{
-			this.compClass = typeof(Comp_LTF_Phenodrill);
+			this.compClass = typeof(Comp_TpBench);
 		}
 	}
 }

@@ -15,7 +15,21 @@ namespace LTF_Teleport
 
     public class ToolsBuilding
     {
-        
+
+        public enum Link { Orphan=0, Linked=1 };
+        public static string[] LinkLabel = { "Orphan", "Linked" };
+
+        public static bool ValidLink(Link val)
+        {
+
+            int cast = (int)val;
+            int min = (int)Link.Orphan;
+            int max = (int)Link.Linked;
+
+            return ((cast >= min) && (cast <= max));
+
+        }
+
         //Building dependencies
         public static bool CheckPower(Building building)
         {

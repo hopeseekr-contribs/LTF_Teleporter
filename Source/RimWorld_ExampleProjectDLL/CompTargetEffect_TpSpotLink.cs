@@ -23,6 +23,11 @@ namespace LTF_Teleport
                 Tools.Warn("// Not a tp spot", true);
                 return;
             }
+            if (tpSpot1 == tpSpot2)
+            {
+                Tools.Warn("// Myself", true);
+                return;
+            }
 
             Comp_LTF_TpSpot spot1Comp = tpSpot1.TryGetComp<Comp_LTF_TpSpot>();
             Comp_LTF_TpSpot spot2Comp = tpSpot1.TryGetComp<Comp_LTF_TpSpot>();
@@ -40,8 +45,8 @@ namespace LTF_Teleport
                 return;
             }
 
-            spot1Comp.Link(tpSpot2, spot2Comp);
-            spot2Comp.Link(tpSpot1, spot1Comp);
+            spot1Comp.CreateLink(tpSpot2, spot2Comp);
+            spot2Comp.CreateLink(tpSpot1, spot1Comp);
 
             Tools.Warn("registered: " + tpSpot2.Label + " in "+ tpSpot1.Label, spot1Comp.prcDebug);
 

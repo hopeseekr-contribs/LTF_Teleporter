@@ -24,7 +24,6 @@ namespace LTF_Teleport
     public class MyGfx
     {
         public static string basePath = "Things/Building/TpSpot/";
-
         
         public static string underlayPath = basePath + "Underlay/";
         public static string overlayPath = basePath + "Overlay/";
@@ -54,35 +53,6 @@ namespace LTF_Teleport
         // public static readonly Material EmptyTile = MaterialPool.MatFrom(overlayPath + "PoweredTpSpot", ShaderDatabase.Transparent);
         public static readonly Graphic ActiveAnim = GraphicDatabase.Get<GfxSlideShow.Graphic_Slideshow>(overlayPath + "TpAnim", ShaderDatabase.MetaOverlay);
         public static readonly Graphic EndAnim = GraphicDatabase.Get<GfxSlideShow.Graphic_Slideshow>(overlayPath + "Vanish", ShaderDatabase.MetaOverlay);
-
-        //Gizmo
-        private static string GizmoPath = "UI/Commands/";
-
-        private static string DebugPath = GizmoPath + "Debug/";
-        private static string HaxPath = GizmoPath + "Hax/";
-        private static string BenchPath = GizmoPath + "TpBench/";
-        private static string QualityPath = GizmoPath + "Quality/";
-
-
-        public static Texture2D DebugOnGz = ContentFinder<Texture2D>.Get(DebugPath + "DebugOn", true);
-        public static Texture2D DebugOffGz = ContentFinder<Texture2D>.Get(DebugPath + "DebugOff", true);
-        public static Texture2D DebugLogGz = ContentFinder<Texture2D>.Get(DebugPath + "DebugLog", true);
-
-        public static Texture2D HaxAddGz = ContentFinder<Texture2D>.Get(HaxPath + "HaxAdd", true);
-        public static Texture2D HaxSubGz = ContentFinder<Texture2D>.Get(HaxPath + "HaxSub", true);
-        public static Texture2D HaxFullGz = ContentFinder<Texture2D>.Get(HaxPath + "HaxFull", true);
-        public static Texture2D HaxEmptyGz = ContentFinder<Texture2D>.Get(HaxPath + "HaxEmpty", true);
-        public static Texture2D HaxWorseGz = ContentFinder<Texture2D>.Get(HaxPath + "HaxWorse", true);
-        public static Texture2D HaxBetterGz = ContentFinder<Texture2D>.Get(HaxPath + "HaxBetter", true);
-
-        public static Texture2D TpLogGz = ContentFinder<Texture2D>.Get(BenchPath + "TpLog", true);
-        public static Texture2D NextTpGz = ContentFinder<Texture2D>.Get(BenchPath + "NextTp", true);
-        public static Texture2D FullTpGz = ContentFinder<Texture2D>.Get(BenchPath + "FullTp", true);
-        public static Texture2D EmptyTpGz = ContentFinder<Texture2D>.Get(BenchPath + "EmptyTp", true);
-
-        public static Texture2D QualityBadGz = ContentFinder<Texture2D>.Get(QualityPath + "Bad", true);
-        public static Texture2D QualityGoodGz = ContentFinder<Texture2D>.Get(QualityPath + "Good", true);
-        public static Texture2D QualityNormalGz = ContentFinder<Texture2D>.Get(QualityPath + "Normal", true);
 
         public static Material Status2OverlayMaterial(Comp_LTF_TpSpot comp, bool FactionMajority, bool debug = false)
         {
@@ -188,6 +158,7 @@ namespace LTF_Teleport
             Tools.Warn(what+"null", debug);
             return Answer;
         }
+
 
     }
 }

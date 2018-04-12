@@ -55,18 +55,18 @@ namespace LTF_Teleport
                 case (int)QualityCategory.Awful:
                 case (int)QualityCategory.Poor:
                 case (int)QualityCategory.Shoddy:
-                    Answer = MyGfx.QualityBadGz;
+                    Answer = MyGizmo.QualityBadGz;
                     break;
                 case (int)QualityCategory.Normal:
                 case (int)QualityCategory.Good:
                 case (int)QualityCategory.Superior:
-                    Answer = MyGfx.QualityNormalGz;
+                    Answer = MyGizmo.QualityNormalGz;
                     break;
                 case (int)QualityCategory.Excellent:
                 case (int)QualityCategory.Masterwork:
                 case (int)QualityCategory.Legendary:
 
-                    Answer = MyGfx.QualityGoodGz;
+                    Answer = MyGizmo.QualityGoodGz;
                     break;
             }
             return Answer;

@@ -89,10 +89,10 @@ State your orders and schedule strategic wanderings.
 				<glowColor>(60,200,100,0)</glowColor>
 			</li>
 
-			
 			<!-- Main -->
-			<li>
-				<compClass>LTF_Teleport.Comp_TpBench</compClass>
+			<li Class="LTF_Teleport.CompProperties_TpBench">
+				<FacilityCapacitySpectrum>1</FacilityCapacitySpectrum>
+				<FacilityCapacityBase>12</FacilityCapacityBase>
 			</li>
 			
 		</comps>

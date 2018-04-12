@@ -22,6 +22,9 @@ namespace LTF_Teleport
         Vector3 buildingPos;
         String buildingName = string.Empty;
 
+        String TpSpotName = string.Empty;
+        int FacilityCapacity = 0;
+        int GizmoIndex = 0;
         /* Comp */
         /******************/
         private CompPowerTrader powerComp;
@@ -29,10 +32,7 @@ namespace LTF_Teleport
 
         //private float benchRadius = 35.7f;
 
-        private List<Building> tpSpotRegistry = new List<Building>();
-
-        private enum MindVector { Ascen, Manip, Empat, Na };
-        string[] vectorName = { "Ascendancy", "Manipulation", "Empathy", "Impossibru" };
+        private List<Building> Registry = new List<Building>();
 
         private const float defaultWorkAmount = 3600f; // 120sec = 60  * 120 = 7200 
         private float workGoal = defaultWorkAmount;
@@ -44,7 +44,14 @@ namespace LTF_Teleport
         bool prcDebug = false;
         bool gfxDebug = false;
         bool Hax = false;
-
+        // Props
+        public CompProperties_TpBench Props
+        {
+            get
+            {
+                return (CompProperties_TpBench)props;
+            }
+        }
         public override void PostDraw()
         {
             base.PostDraw();
@@ -106,15 +113,12 @@ namespace LTF_Teleport
             building = (Building)parent;
             buildingPos = building.DrawPos;
             buildingName = building?.LabelShort;
-
+            TpSpotName = Tools.LabelByDefName("LTF_TpSpot", prcDebug);
             //Building comp
             powerComp = building?.TryGetComp<CompPowerTrader>();
             compQuality = building?.TryGetComp<CompQuality>();
 
-            if (powerComp == null)
-            {
-                Tools.Warn("power comp Null");
-            }
+            SetFacilityCapacity(compQuality);
         }
 
         /*
@@ -128,10 +132,10 @@ namespace LTF_Teleport
         public override void PostExposeData()
         {
             base.PostExposeData();
-            Scribe_Collections.Look<Building>(ref tpSpotRegistry, "tpSpots", LookMode.Reference, new object[0]);
-            if (Scribe.mode == LoadSaveMode.PostLoadInit && this.tpSpotRegistry == null)
+            Scribe_Collections.Look<Building>(ref Registry, "tpSpots", LookMode.Reference, new object[0]);
+            if (Scribe.mode == LoadSaveMode.PostLoadInit && this.Registry == null)
             {
-                this.tpSpotRegistry= new List<Building>();
+                this.Registry= new List<Building>();
             }
         }
         public void MindMineTick(Pawn masterMind)
@@ -143,19 +147,41 @@ namespace LTF_Teleport
                 mindcontrolEnabled = true;
             }
         }
+        public bool MoreThanOne
+        {
+            get
+            {
+                return (!IsEmpty && Registry.Count > 1);
+            }
+        }
+        public bool IsFull
+        {
+            get
+            {
+                return ((!IsEmpty) && (Registry.Count >= FacilityCapacity));
+            }
+        }
+        public bool IsEmpty
+        {
+            get
+            {
+                return (Registry.NullOrEmpty());
+            }
+        }
         public bool HasSpot
         {
             get
             {
-                return (!tpSpotRegistry.NullOrEmpty());
+                return (!IsEmpty);
             }
         }
+
         public void RemoveSpot(Building target)
         {
             if ((target == null) || (target.def.defName != "LTF_TpSpot"))
                 Tools.Warn("Trying to remove a non tp spot", prcDebug);
 
-            tpSpotRegistry.Remove(target);
+            Registry.Remove(target);
         }
         public void AddSpot(Building target)
         {
@@ -163,11 +189,11 @@ namespace LTF_Teleport
                 Tools.Warn("Trying to register a non tp spot", prcDebug);
 
 
-            if (tpSpotRegistry.Contains(target))
+            if (Registry.Contains(target))
             {
                 return;
             }
-            tpSpotRegistry.Add(target);
+            Registry.Add(target);
 
         }
 
@@ -195,6 +221,23 @@ namespace LTF_Teleport
                 return (ToolsBuilding.CheckPower(building));
             }
         }
+        public bool HasQuality
+        {
+            get
+            {
+                return (compQuality != null);
+            }
+        }
+        private void SetFacilityCapacity(CompQuality comp, bool debug=false)
+        {
+            Tools.Warn(">Settin Quality>" + Props.FacilityCapacityBase + ';' + Props.FacilityCapacitySpectrum + ">FacilityCapacity>" + FacilityCapacity, debug);
+            FacilityCapacity = (int)Tools.WeightedCapacity(Props.FacilityCapacityBase, Props.FacilityCapacitySpectrum, comp);
+        }
+
+        private void NextIndex()
+        {
+            GizmoIndex = Tools.NextIndexRoundBrowser(GizmoIndex, Registry.Count);
+        }
 
         public void ShowReport()
         {
@@ -204,9 +247,9 @@ namespace LTF_Teleport
             stringBuilder.AppendLine("| Worktation logs |");
             stringBuilder.AppendLine("+----------------+");
 
-            if (!tpSpotRegistry.NullOrEmpty())
+            if (!Registry.NullOrEmpty())
             {
-                foreach (Building cur in tpSpotRegistry)
+                foreach (Building cur in Registry)
                 {
                     stringBuilder.AppendLine(cur.Label);
                 }
@@ -218,10 +261,7 @@ namespace LTF_Teleport
         private void ChangeQuality(bool better = true)
         {
             ToolsQuality.ChangeQuality(building, compQuality, better);
-            /*
-            SetCooldownBase();
-            currentCooldown = Mathf.Min(cooldownBase, currentCooldown);
-            */
+            SetFacilityCapacity(compQuality);
         }
         private void BetterQuality()
         {
@@ -234,15 +274,12 @@ namespace LTF_Teleport
         private string QualityLog()
         {
             string Answer = string.Empty;
-
-            // No spectrum, dumb math 8/7/6 5/4/3 2/1/0
-            // No spectrum, dumb math 4/3/3 2/2/2 1/1/1
-            //int nerfLevelNum = (int)XpLossPivot;
-            //int RNG = Rand.RangeInclusive(-(int)XpRand, (int)XpRand);
-            Answer = "nice";
+            //Tools.WeightedCapacity(Props.facilityCapacityBase, Props.facilityCapacitySpectrum, compQuality);
+            Answer = "Registry capacity: " + FacilityCapacity;
 
             return Answer;
         }
+
         public override void CompTick()
         {
             base.CompTick();
@@ -253,13 +290,13 @@ namespace LTF_Teleport
 
                 if (Tools.TwoTicksOneTrue())
                 {
-                    foreach(Building cur in tpSpotRegistry)
+                    foreach(Building cur in Registry)
                     {
                         if( (!ToolsBuilding.CheckBuilding(cur)) || (!ToolsBuilding.CheckPower(cur)) ){
                             Comp_LTF_TpSpot comp_LTF_TpSpot  = cur?.TryGetComp<Comp_LTF_TpSpot>();
                             if(comp_LTF_TpSpot!=null)
                                 comp_LTF_TpSpot.ResetFacility();
-                            tpSpotRegistry.Remove(cur);
+                            Registry.Remove(cur);
                         } 
                     }
 
@@ -272,165 +309,136 @@ namespace LTF_Teleport
         [DebuggerHidden]
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
+            if (HasQuality)
+            {
+                Texture2D qualityMat = ToolsGizmo.Quality2Mat(compQuality);
+                float qualitySize = ToolsGizmo.Quality2Size(compQuality);
+
+                yield return new Command_Action
+                {
+                    //icon = ContentFinder<Texture2D>.Get("UI/Commands/CancelRegistry", true),
+                    icon = qualityMat,
+                    iconDrawScale = qualitySize,
+                    defaultLabel = "Quality matters",
+                    defaultDesc = QualityLog(),
+                    action = delegate
+                    {
+                        Tools.Warn("rip quality button", prcDebug);
+                    }
+                };
+            }
+
             if (GotThePower)
             {
-                if (Prefs.DevMode)
                 {
-                    // Debug process
-                    yield return new Command_Action
+                    Texture2D myMat = MyGizmo.EmptyStatus2Gizmo(IsEmpty, IsFull);
+                    String myLabel = "Registry";
+                    String Grammar = ((MoreThanOne) ? ("s") : (""));
+                    String myDesc = Tools.CapacityString(Registry.Count, FacilityCapacity) + ' ' + TpSpotName + ".";
+                    if (IsEmpty || IsFull)
                     {
-                        icon = ((prcDebug) ? (MyGfx.DebugOnGz) : (MyGfx.DebugOffGz)),
-                        defaultLabel = "prc: " + Tools.DebugStatus(prcDebug),
-                        defaultDesc = "process debug",
-                        action = delegate
-                        {
-                            prcDebug = Tools.WarnBoolToggle(prcDebug, "debug " + building.Label);
-                        }
-                    };
-                    // Debug gfx
-                    yield return new Command_Action
-                    {
-                        icon = ((gfxDebug) ? (MyGfx.DebugOnGz) : (MyGfx.DebugOffGz)),
-                        defaultLabel = "gfx: " + Tools.DebugStatus(gfxDebug),
-                        defaultDesc = "gfx debug",
-                        action = delegate
-                        {
-                            gfxDebug = Tools.WarnBoolToggle(gfxDebug, "debug " + building.Label);
-                        }
-                    };
-
-
-                    //debug log + hax activate
-                    if (prcDebug)
-                        yield return new Command_Action
-                        {
-                            //icon = ContentFinder<Texture2D>.Get("UI/Commands/HaxReady", true),
-                            icon = MyGfx.DebugLogGz,
-                            defaultLabel = "hax " + Tools.DebugStatus(Hax),
-                            defaultDesc = "$5,000 for you advert here.",
-                            action = delegate
-                            {
-                                Hax = Tools.WarnBoolToggle(Hax, "hax " + building.Label);
-                            }
-                        };
-
-                    // Hax Progress
-                    if (prcDebug && Hax)
-                    {
-                        /*
-                        if (currentCooldown != 0)
-                            yield return new Command_Action
-                            {
-                                icon = MyGfx.HaxEmptyGz,
-                                defaultLabel = currentCooldown + "->" + cooldownBase,
-                                defaultDesc = "force cooldown",
-                                action = delegate
-                                {
-                                    ForceCooldown();
-                                }
-                            };
-                        yield return new Command_Action
-                        {
-                            icon = MyGfx.HaxFullGz,
-                            defaultLabel = currentCooldown + "->0",
-                            defaultDesc = "reset cooldown",
-                            action = delegate
-                            {
-                                ResetCooldown();
-                            }
-                        };
-
-                        int minus10perc = (int)Mathf.Max(0, (currentCooldown - cooldownBase / 10));
-                        int plus10perc = (int)Mathf.Min(cooldownBase, (currentCooldown + cooldownBase / 10));
-
-                        yield return new Command_Action
-                        {
-                            icon = MyGfx.HaxSubGz,
-                            //defaultLabel = currentCooldown + "->" + minus10perc,
-                            defaultLabel = currentCooldown + "->" + plus10perc,
-                            defaultDesc = "-10%",
-                            action = delegate
-                            {
-                                SetCooldown(plus10perc);
-                            }
-                        };
-
-                        yield return new Command_Action
-                        {
-                            icon = MyGfx.HaxAddGz,
-                            defaultLabel = currentCooldown + "->" + minus10perc,
-                            //defaultLabel = currentCooldown + "->" + plus10perc,
-                            defaultDesc = "+10%",
-                            action = delegate
-                            {
-                                SetCooldown(minus10perc);
-                            }
-                        };
-                        */
+                        myDesc += " Registry is " + ((IsEmpty) ? ("empty") : ("full"));
+                        if (IsEmpty)
+                            myDesc += " It wont help managing any.";
+                        if (IsFull)
+                            myDesc += " No additional " + TpSpotName + " will be managed.";
                     }
-
-                    // Hax quality
-                    if (prcDebug && Hax && (compQuality != null))
-                    {
-                        if (!ToolsQuality.BestQuality(compQuality))
-                            yield return new Command_Action
-                            {
-                                defaultLabel = compQuality.Quality.GetLabelShort() + "->" + ToolsQuality.BetterQuality(compQuality),
-                                defaultDesc = "Better quality",
-                                //icon = ContentFinder<Texture2D>.Get("UI/Commands/HaxReady", true),
-                                icon = MyGfx.HaxBetterGz,
-                                action = delegate
-                                {
-                                    BetterQuality();
-                                }
-                            };
-
-                        if (!ToolsQuality.WorstQuality(compQuality))
-                            yield return new Command_Action
-                            {
-                                defaultDesc = "Worse quality",
-                                defaultLabel = compQuality.Quality.GetLabelShort() + "->" + ToolsQuality.WorseQuality(compQuality),
-                                icon = MyGfx.HaxWorseGz,
-                                action = delegate
-                                {
-                                    WorseQuality();
-                                }
-                            };
-                    }
-                }
-
-                if (compQuality != null) {
-                    Texture2D qualityMat = ToolsGizmo.Quality2Mat(compQuality);
-                    float qualitySize = ToolsGizmo.Quality2Size(compQuality);
-
+                    myDesc += "\nLists " + Registry.Count + " remote space manipulator" + Grammar + ". ok teleporter" + Grammar + ".";
                     yield return new Command_Action
                     {
-                        //icon = ContentFinder<Texture2D>.Get("UI/Commands/CancelRegistry", true),
-                        icon = qualityMat,
-                        iconDrawScale = qualitySize,
-                        defaultLabel = "Quality matters",
-                        defaultDesc = QualityLog(),
-                        action = delegate
-                        {
-                            Tools.Warn("rip quality button", prcDebug);
-                        }
-                    };
-                }
-
-                // Registration/Registry Log
-                if (HasSpot)
-                {
-                    Texture2D LogMat = MyGfx.TpLogGz;
-                    String LogString = " tp registry";
-                    yield return new Command_Action
-                    {
-                        icon = LogMat,
-                        defaultLabel = LogString,
-                        defaultDesc = "Lists remote space manipulator. ok teleporters.",
+                        icon = myMat,
+                        defaultLabel = myLabel,
+                        defaultDesc = myDesc,
                         action = new Action(this.ShowReport),
                     };
                 }
+                
+                if (MoreThanOne)
+                {
+                    Texture2D myMat = MyGizmo.NextTpGz;
+                    String myLabel = Tools.CapacityString(GizmoIndex+1, Registry.Count)+" - "+Tools.PosStr(Registry[GizmoIndex].Position);
+                    //String Grammar = ((MoreThanOne) ? ("s") : (""));
+                    String myDesc = "Browse " + Registry.Count + " records";
+                    yield return new Command_Action
+                    {
+                        icon = myMat,
+                        defaultLabel = myLabel,
+                        defaultDesc = myDesc,
+                        action = new Action(NextIndex),
+                    };
+                }
+                
+            }
 
+            if (Prefs.DevMode)
+            {
+                // Debug process
+                yield return new Command_Action
+                {
+                    icon = ((prcDebug) ? (MyGizmo.DebugOnGz) : (MyGizmo.DebugOffGz)),
+                    defaultLabel = "prc: " + Tools.DebugStatus(prcDebug),
+                    defaultDesc = "process debug",
+                    action = delegate
+                    {
+                        prcDebug = Tools.WarnBoolToggle(prcDebug, "debug " + building.Label);
+                    }
+                };
+                // Debug gfx
+                yield return new Command_Action
+                {
+                    icon = ((gfxDebug) ? (MyGizmo.DebugOnGz) : (MyGizmo.DebugOffGz)),
+                    defaultLabel = "gfx: " + Tools.DebugStatus(gfxDebug),
+                    defaultDesc = "gfx debug",
+                    action = delegate
+                    {
+                        gfxDebug = Tools.WarnBoolToggle(gfxDebug, "debug " + building.Label);
+                    }
+                };
+                //debug log + hax activate
+                if (prcDebug)
+                    yield return new Command_Action
+                    {
+                        //icon = ContentFinder<Texture2D>.Get("UI/Commands/HaxReady", true),
+                        icon = MyGizmo.DebugLogGz,
+                        defaultLabel = "hax " + Tools.DebugStatus(Hax),
+                        defaultDesc = "$5,000 for you advert here.",
+                        action = delegate
+                        {
+                            Hax = Tools.WarnBoolToggle(Hax, "hax " + building.Label);
+                        }
+                    };
+                // Hax Progress
+                if (prcDebug && Hax)
+                {
+                }
+                // Hax quality
+                if (prcDebug && Hax && HasQuality)
+                {
+                    if (!ToolsQuality.BestQuality(compQuality))
+                        yield return new Command_Action
+                        {
+                            defaultLabel = compQuality.Quality.GetLabelShort() + "->" + ToolsQuality.BetterQuality(compQuality),
+                            defaultDesc = "Better quality",
+                            //icon = ContentFinder<Texture2D>.Get("UI/Commands/HaxReady", true),
+                            icon = MyGizmo.HaxBetterGz,
+                            action = delegate
+                            {
+                                BetterQuality();
+                            }
+                        };
+
+                    if (!ToolsQuality.WorstQuality(compQuality))
+                        yield return new Command_Action
+                        {
+                            defaultDesc = "Worse quality",
+                            defaultLabel = compQuality.Quality.GetLabelShort() + "->" + ToolsQuality.WorseQuality(compQuality),
+                            icon = MyGizmo.HaxWorseGz,
+                            action = delegate
+                            {
+                                WorseQuality();
+                            }
+                        };
+                }
             }
         }
 
@@ -439,30 +447,30 @@ namespace LTF_Teleport
             if (!GotThePower)
                 return null;
 
-            if(tpSpotRegistry.NullOrEmpty())
+            if(Registry.NullOrEmpty())
                 return "Empty registry.";
 
             string report = string.Empty;
-            string spotName = tpSpotRegistry.RandomElement().def.label;
+            string spotName = Registry.RandomElement().def.label;
 
-            report = ">"+tpSpotRegistry.Count+"<" + ' ' + spotName + ": ";
-            foreach (Building cur in tpSpotRegistry)
+            report = ">"+Registry.Count+"<" + ' ' + spotName + ": ";
+            foreach (Building cur in Registry)
             {
-                report += "[" + cur.Position.x + ";" + cur.Position.z + "];";
+                report += Tools.PosStr(cur.Position);
             }
             return report;
             /*
             string report = string.Empty;
-            foreach (Building cur in tpSpotRegistry)
+            foreach (Building cur in Registry)
             {
                 report += ' '+cur.Label + "[" + cur.Position.x + ";" + cur.Position.z + "];";
             }*/
         }
         public override void PostDrawExtraSelectionOverlays()
         {
-            if (!tpSpotRegistry.NullOrEmpty())
+            if (!Registry.NullOrEmpty())
             {
-                foreach (Building cur in tpSpotRegistry)
+                foreach (Building cur in Registry)
                     GenDraw.DrawLineBetween(this.parent.TrueCenter(), cur.TrueCenter());
             }
         }

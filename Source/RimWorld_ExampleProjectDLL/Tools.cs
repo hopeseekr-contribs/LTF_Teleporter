@@ -32,7 +32,18 @@ namespace LTF_Teleport
 
             return Answer;
         }
+        public static string PosStr(IntVec3 position)
+        {
+            return (" [" + position.x + ";" + position.z + "];");
+        }
+        public static string LabelByDefName(string DefName, bool debug=false)
+        {
+            string Answer = string.Empty;
+            Answer = ThingDef.Named(DefName)?.label;
+            Tools.Warn("Answer: " + Answer, debug);
 
+            return Answer;
+        }
         // Debug
         public static void Warn(string warning, bool debug = false)
         {
@@ -68,6 +79,11 @@ namespace LTF_Teleport
             if (val > max) return max;
             return val;
         }
+        public static int NextIndexRoundBrowser(int index, int count)
+        {
+            return ((index == count - 1) ? (0) : (index + 1));
+        }
+        
 
         public static string CapacityString(float capacity, float capacityMax)
         {
@@ -118,6 +134,19 @@ namespace LTF_Teleport
             Log.Warning(((boolean) ? ("<<<") : (">>>")) + " " + PropertyName + " " + Tools.DebugStatus(boolean));
             boolean = !boolean;
             return boolean;
+        }
+    }
+
+    public static class Extensions
+    {
+
+        public static T Next<T>(this T src) where T : struct
+        {
+            if (!typeof(T).IsEnum) throw new ArgumentException(String.Format("Argument {0} is not an Enum", typeof(T).FullName));
+
+            T[] Arr = (T[])Enum.GetValues(src.GetType());
+            int j = Array.IndexOf<T>(Arr, src) + 1;
+            return (Arr.Length == j) ? Arr[0] : Arr[j];
         }
     }
 }
