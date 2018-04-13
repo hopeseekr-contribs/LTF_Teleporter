@@ -176,6 +176,14 @@ namespace LTF_Teleport
             }
         }
 
+        public Building CurrentSpot
+        {
+            get
+            {
+                return Registry[GizmoIndex];
+            }
+        }
+
         public void RemoveSpot(Building target)
         {
             if ((target == null) || (target.def.defName != "LTF_TpSpot"))
@@ -352,11 +360,42 @@ namespace LTF_Teleport
                         action = new Action(this.ShowReport),
                     };
                 }
-                
+
+                if (HasSpot)
+                {
+                    Comp_LTF_TpSpot comp = CurrentSpot?.TryGetComp<Comp_LTF_TpSpot>();
+                    if (comp != null)
+                    {
+                        if (comp.ValidWay)
+                        {
+                            String WayName = comp.WayNaming;
+                            Texture2D myGizmo = null;
+                            if(comp.StatusReady && comp.IsLinked)
+                                myGizmo = comp.WayGizmoing;
+                            else
+                                myGizmo = comp.IssueGizmoing;
+                            
+                            String myLabel = WayName;
+                            String myDesc = comp.WayDescription+"\n"+ comp.StatusExplanation;
+                            {
+                                yield return new Command_Action
+                                {
+                                    icon = myGizmo,
+                                    defaultLabel = myLabel,
+                                    defaultDesc = myDesc,
+                                    action = new Action( comp.WorkstationOrder),
+                                };
+                            }
+                        }
+                        else Tools.Warn("gizmo should not be this way", prcDebug);
+                    }
+                    else Tools.Warn("gizmo should not be this way", prcDebug);
+                }
+
                 if (MoreThanOne)
                 {
                     Texture2D myMat = MyGizmo.NextTpGz;
-                    String myLabel = Tools.CapacityString(GizmoIndex+1, Registry.Count)+" - "+Tools.PosStr(Registry[GizmoIndex].Position);
+                    String myLabel = Tools.CapacityString(GizmoIndex+1, Registry.Count)+" - "+Tools.PosStr(CurrentSpot.Position);
                     //String Grammar = ((MoreThanOne) ? ("s") : (""));
                     String myDesc = "Browse " + Registry.Count + " records";
                     yield return new Command_Action
@@ -470,8 +509,15 @@ namespace LTF_Teleport
         {
             if (!Registry.NullOrEmpty())
             {
+                GenDraw.DrawLineBetween(this.parent.TrueCenter(), CurrentSpot.TrueCenter(), SimpleColor.Red);
+                /*
                 foreach (Building cur in Registry)
-                    GenDraw.DrawLineBetween(this.parent.TrueCenter(), cur.TrueCenter());
+                {
+                    if(cur == CurrentSpot) GenDraw.DrawLineBetween(this.parent.TrueCenter(), CurrentSpot.TrueCenter(), SimpleColor.Red);
+                    else                   GenDraw.DrawLineBetween(this.parent.TrueCenter(), cur.TrueCenter());
+                    
+                }
+                */
             }
         }
     }

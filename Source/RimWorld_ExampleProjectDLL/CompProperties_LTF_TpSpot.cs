@@ -21,6 +21,8 @@ namespace LTF_Teleport
         public float weightBase = 50f;
         public float weightSpectrum = 160f;
 
+        public bool PowerRequired = true;
+
         // 60 sec base cooldown
         // Best = 20 min
         // 8*5 ; -5 sec / quality

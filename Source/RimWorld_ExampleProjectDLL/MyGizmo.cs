@@ -32,6 +32,7 @@ namespace LTF_Teleport
 
         static string SpotPath = GizmoPath + "TpSpot/";
         static string BenchPath = GizmoPath + "TpBench/";
+        static string IssuePath = GizmoPath + "TpBench/Issue";
 
         //Common
         public static Texture2D DebugOnGz = ContentFinder<Texture2D>.Get(DebugPath + "DebugOn", true);
@@ -62,11 +63,21 @@ namespace LTF_Teleport
         public static Texture2D WaySwapGz = ContentFinder<Texture2D>.Get(SpotPath + "WaySwap", true);
 
         // TpBench
-        public static Texture2D TpLogGz = ContentFinder<Texture2D>.Get(BenchPath + "TpLog", true);
+        public static Texture2D TpLogGz = ContentFinder<Texture2D>.Get(BenchPath + "RegistryLog", true);
+        public static Texture2D EmptyRegistryGz = ContentFinder<Texture2D>.Get(BenchPath + "RegistryEmpty", true);
+        public static Texture2D FullRegistryGz = ContentFinder<Texture2D>.Get(BenchPath + "RegistryFull", true);
+
         public static Texture2D NextTpGz = ContentFinder<Texture2D>.Get(BenchPath + "NextTp", true);
 
-        public static Texture2D EmptyRegistryGz = ContentFinder<Texture2D>.Get(BenchPath + "EmptyRegistry", true);
-        public static Texture2D FullRegistryGz = ContentFinder<Texture2D>.Get(BenchPath + "FullRegistry", true);
+        public static Texture2D IssuePowerGz = ContentFinder<Texture2D>.Get(IssuePath + "NoPower", true);
+        public static Texture2D IssueNoPoweredFacilityGz = ContentFinder<Texture2D>.Get(IssuePath + "NoPoweredFacility", true);
+
+        public static Texture2D IssueNoFacilityGz = ContentFinder<Texture2D>.Get(IssuePath + "NoFacility", true);
+        public static Texture2D IssueOrphanGz = ContentFinder<Texture2D>.Get(IssuePath + "Orphan", true);
+
+        public static Texture2D IssueCooldownGz = ContentFinder<Texture2D>.Get(IssuePath + "Cooldown", true);
+        public static Texture2D IssueOverweightGz = ContentFinder<Texture2D>.Get(IssuePath + "Overweight", true);
+
 
         public static Texture2D EmptyStatus2Gizmo(bool empty, bool full)
         {

@@ -44,6 +44,10 @@ namespace LTF_Teleport
 
             return Answer;
         }
+        public static string Ticks2Str(float ticks)
+        {
+            return (Math.Round(ticks / 60,1) + "s");
+        }
         // Debug
         public static void Warn(string warning, bool debug = false)
         {
@@ -148,5 +152,7 @@ namespace LTF_Teleport
             int j = Array.IndexOf<T>(Arr, src) + 1;
             return (Arr.Length == j) ? Arr[0] : Arr[j];
         }
+
+        
     }
 }
