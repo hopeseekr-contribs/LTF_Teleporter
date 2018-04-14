@@ -101,6 +101,7 @@
 			<cooldownBase>7200</cooldownBase>
 			<cooldownSpectrum>-3600</cooldownSpectrum>
 			<PowerRequired>false</PowerRequired>
+			<BenchRequired>false</BenchRequired>
 		</li>
 	
 		<li Class="CompProperties_Glower">

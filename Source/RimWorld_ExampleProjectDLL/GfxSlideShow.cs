@@ -79,9 +79,9 @@ namespace LTF_Teleport
                     return;
                 }
 
-                Comp_LTF_TpSpot tpSpot = null;
-                tpSpot = getTpSpot(thing);
-                if (tpSpot == null)
+                Comp_LTF_TpSpot comp = null;
+                comp = getTpSpot(thing);
+                if (comp == null)
                 {
                     Tools.Warn("Cant find tpspot comp", true);
                     return;
@@ -90,8 +90,12 @@ namespace LTF_Teleport
                 if (frameI >= frameMax)
                 {
                     Unset();
-                    if ((tpSpot.TpOutActive) || (tpSpot.TpOutEnd))
-                        tpSpot.TpOutNextAnim();
+                    if ((comp.TpOutActive) || (comp.TpOutEnd))
+                        //if ((tpSpot.TpOutBegin) || (tpSpot.TpOutActive))
+                        comp.NextAnim();
+
+                    if (comp.TpOutNa)
+                        comp.SlideShowOn = false;
                     return;
                 }
 
@@ -115,14 +119,14 @@ namespace LTF_Teleport
                 //matrix.SetTRS(drawPos, (extraRotation != 0)?(Quaternion.AngleAxis(extraRotation, Vector3.up)):Quaternion.identity, dotS);
                 matrix.SetTRS(loc, (extraRotation != 0) ? (Quaternion.AngleAxis(extraRotation, Vector3.up)) : Quaternion.identity, dotS);
 
-                Material material = FadedMaterialPool.FadedVersionOf(graphic.MatSingle, tpSpot.AnimOpacity);
+                Material material = FadedMaterialPool.FadedVersionOf(graphic.MatSingle, comp.AnimOpacity);
 
                 Graphics.DrawMesh(MeshPool.plane10, matrix, graphic.MatSingle, 0);
                 //Log.Warning("Drew " + frameI + "/" + frameMax);
                 //Tools.Warn("2tick1true:"+ Tools.TwoTicksOneTrue(5), true);
-                if (tpSpot.IncFrameSlower() == 0) {
+                if (comp.IncFrameSlower() == 0) {
                     frameI += 1;
-                    tpSpot.SetFrameSlower();
+                    comp.SetFrameSlower();
                 }
 
             }

@@ -58,7 +58,7 @@ namespace LTF_Teleport
         public static CompAffectedByFacilities GetAffectedComp(Building building, bool debug = false)
         {
             if (!CheckBuilding(building)) {
-                Tools.Warn("bad building, wont check facility", debug);
+                Tools.Warn("//bad building, wont check facility", debug);
                 return null;
             }
 
@@ -67,7 +67,7 @@ namespace LTF_Teleport
 
             if (affectedComp == null)
             {
-                Tools.Warn("no affected by facility comp found", debug);
+                Tools.Warn("//no affected by facility comp found", debug);
                 return null;
             }
 
@@ -78,7 +78,7 @@ namespace LTF_Teleport
             //Building.CompFacility legit
             if (buildingFacilityComp.LinkedFacilitiesListForReading.NullOrEmpty())
             {
-                Tools.Warn("no linked facility found", debug);
+                Tools.Warn("//no linked facility found", debug);
                 return null;
             }
             Tools.Warn("Found: " + buildingFacilityComp.LinkedFacilitiesListForReading.Count + " facilities", debug);

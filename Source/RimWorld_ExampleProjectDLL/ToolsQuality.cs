@@ -89,6 +89,17 @@ namespace LTF_Teleport
             return comp;
         }
 
+        public static int Valid(int QualityValue, bool debug = false)
+        {
+            int Value = QualityValue;
+            if ((Value < 0) || (Value > 8))
+            {
+                Tools.Warn("Stupid Quality:" + Value + ", correcting", debug);
+                Value = Mathf.Max(0, Value);
+                Value = Mathf.Min(8, Value);
+            }
+            return Value;
+        }
     }
 
 }

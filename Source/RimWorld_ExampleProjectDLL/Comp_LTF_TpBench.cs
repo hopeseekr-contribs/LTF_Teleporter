@@ -137,6 +137,7 @@ namespace LTF_Teleport
             {
                 this.Registry= new List<Building>();
             }
+            Scribe_Values.Look(ref GizmoIndex, "index");
         }
         public void MindMineTick(Pawn masterMind)
         {
@@ -370,22 +371,32 @@ namespace LTF_Teleport
                         {
                             String WayName = comp.WayNaming;
                             Texture2D myGizmo = null;
-                            if(comp.StatusReady && comp.IsLinked)
+                            if (comp.StatusReady && comp.IsLinked)
                                 myGizmo = comp.WayGizmoing;
                             else
                                 myGizmo = comp.IssueGizmoing;
-                            
-                            String myLabel = WayName;
-                            String myDesc = comp.WayDescription+"\n"+ comp.StatusExplanation;
+
+                            String myLabel = "Cast "+WayName;
+                            String myDesc = comp.WayDescription + "\n" + comp.StatusLogNoUpdate;
+                            Action todo = ShowReport;
+
+                            if (comp.MyWay == Comp_LTF_TpSpot.Way.Out)
+                                todo = comp.OrderOut;
+                            else if (comp.MyWay == Comp_LTF_TpSpot.Way.In)
+                                todo = comp.OrderIn;
+                            else if (comp.MyWay == Comp_LTF_TpSpot.Way.Swap)
+                                todo = comp.OrderSwap;
+                            else if (comp.MyWay == Comp_LTF_TpSpot.Way.No)
+                                todo = ShowReport;
+
+                            yield return new Command_Action
                             {
-                                yield return new Command_Action
-                                {
-                                    icon = myGizmo,
-                                    defaultLabel = myLabel,
-                                    defaultDesc = myDesc,
-                                    action = new Action( comp.WorkstationOrder),
-                                };
-                            }
+                                icon = myGizmo,
+                                defaultLabel = myLabel,
+                                defaultDesc = myDesc,
+                                action = new Action(todo),
+                            };
+
                         }
                         else Tools.Warn("gizmo should not be this way", prcDebug);
                     }
@@ -395,7 +406,7 @@ namespace LTF_Teleport
                 if (MoreThanOne)
                 {
                     Texture2D myMat = MyGizmo.NextTpGz;
-                    String myLabel = Tools.CapacityString(GizmoIndex+1, Registry.Count)+" - "+Tools.PosStr(CurrentSpot.Position);
+                    String myLabel = Tools.CapacityString(GizmoIndex + 1, Registry.Count) + " - " + Tools.PosStr(CurrentSpot.Position);
                     //String Grammar = ((MoreThanOne) ? ("s") : (""));
                     String myDesc = "Browse " + Registry.Count + " records";
                     yield return new Command_Action
@@ -406,7 +417,7 @@ namespace LTF_Teleport
                         action = new Action(NextIndex),
                     };
                 }
-                
+
             }
 
             if (Prefs.DevMode)

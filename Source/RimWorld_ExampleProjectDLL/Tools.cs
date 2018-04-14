@@ -7,13 +7,13 @@ namespace LTF_Teleport
 {
     public class Tools
     {
-        public static bool TwoTicksOneTrue(int period=60, bool debug=false)
+        public static bool TwoTicksOneTrue(int period = 60, bool debug = false)
         {
             Tools.Warn("°°°°°°2t1true" + (int)((Time.realtimeSinceStartup * 100) % period), debug);
-            return ( (int)((Time.realtimeSinceStartup * 100) % period) == 1);
+            return ((int)((Time.realtimeSinceStartup * 100) % period) == 1);
         }
 
-//        public static bool 
+        //        public static bool 
 
         //String
         public static string OkStr(bool boolean = false)
@@ -36,7 +36,7 @@ namespace LTF_Teleport
         {
             return (" [" + position.x + ";" + position.z + "];");
         }
-        public static string LabelByDefName(string DefName, bool debug=false)
+        public static string LabelByDefName(string DefName, bool debug = false)
         {
             string Answer = string.Empty;
             Answer = ThingDef.Named(DefName)?.label;
@@ -46,7 +46,7 @@ namespace LTF_Teleport
         }
         public static string Ticks2Str(float ticks)
         {
-            return (Math.Round(ticks / 60,1) + "s");
+            return (Math.Round(ticks / 60, 1) + "s");
         }
         // Debug
         public static void Warn(string warning, bool debug = false)
@@ -87,9 +87,9 @@ namespace LTF_Teleport
         {
             return ((index == count - 1) ? (0) : (index + 1));
         }
-        
 
-        public static string CapacityString(float capacity, float capacityMax)
+
+    public static string CapacityString(float capacity, float capacityMax)
         {
             string buffer = string.Empty;
             buffer = capacity + " / " + capacityMax;

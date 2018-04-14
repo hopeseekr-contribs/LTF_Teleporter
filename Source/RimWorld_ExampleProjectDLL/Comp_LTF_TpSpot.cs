@@ -12,9 +12,14 @@ using Verse.Sound;
 
 namespace LTF_Teleport
 {
-
-    // Main
-    [StaticConstructorOnStartup]
+    // Todo
+    
+    // if cooldown && non power  -> fire spawn
+    // if link while cooldown -> fire spawn
+    // if no power, reset
+        
+     // Main
+        [StaticConstructorOnStartup]
     public class Comp_LTF_TpSpot : ThingComp
     {
         // parent shortcurts
@@ -23,12 +28,13 @@ namespace LTF_Teleport
         String buildingName = string.Empty;
         String MyDefName = string.Empty;
 
-        bool RequiresPower = true;
+        public bool RequiresPower = true;
+        public bool RequiresBench = true;
         public enum Way { No = 0, Out = 1, In = 2, Swap = 3 };
 
         Texture2D[] WayGizmo = { MyGizmo.WayNoGz, MyGizmo.WayOutGz, MyGizmo.WayInGz, MyGizmo.WaySwapGz };
 
-        public Building LinkedTpSpot = null;
+        public Building Twin = null;
         public ToolsBuilding.Link MyLink = ToolsBuilding.Link.Orphan;
 
         bool Auto = false;
@@ -38,6 +44,15 @@ namespace LTF_Teleport
         string TargetLabel = "what stands on";
         public Way MyWay = Way.No;
 
+        public int WarmUp = 0;
+        public int WarmUpBase = 0;
+
+        float TwinDistance = 0f;
+        private bool TeleportOrder = false;
+        //int StartupTickCount = 1000;
+        bool Destination = false;
+        bool Source = false;
+        public bool SlideShowOn = false;
         /* Comp */
         /******************/
         public CompPowerTrader compPowerTrader = null;
@@ -47,7 +62,7 @@ namespace LTF_Teleport
         public CompPowerTrader compPowerFacility = null;
         public Comp_TpBench comp_TpBench = null;
         // Linked tpspot maybe
-        public Comp_LTF_TpSpot linkedComp_LTF_TpSpot = null;
+        public Comp_LTF_TpSpot compTwin = null;
         //        private CompFlickable flickComp;
 
         /* Caracteristics */
@@ -114,12 +129,13 @@ namespace LTF_Teleport
             allWrong = overweight | cooldown | noPower | noFacility | noItem,
 
             capable = 64,
-        };
+        }
 
         bool FactionMajority = false;
 
         public Gfx.AnimStep TpOutStatus = Gfx.AnimStep.na;
-        int beginSequenceFrameLength = 120;
+        public Gfx.AnimStep TpInStatus = Gfx.AnimStep.na;
+        int BeginSequenceFrameLength = 120;
         int beginSequenceI = 0;
 
         int FrameSlowerMax = 3;
@@ -150,6 +166,13 @@ namespace LTF_Teleport
             ToolsQuality.ChangeQuality(building, compQuality, better);
             SetCooldownBase();
             SetWeightBase(compQuality);
+        }
+        public bool HasOrder
+        {
+            get
+            {
+                return TeleportOrder;
+            }
         }
         public bool HasQuality
         {
@@ -229,9 +252,9 @@ namespace LTF_Teleport
 
                 if (RequiresPower && !HasPower)
                     Answer = MyGizmo.IssuePowerGz;
-                else if (!IsCatcher && StatusNoFacility)
+                else if (RequiresBench && StatusNoFacility)
                     Answer = MyGizmo.IssueNoFacilityGz;
-                else if (!IsCatcher && !HasPoweredFacility)
+                else if (RequiresBench && !HasPoweredFacility)
                     Answer = MyGizmo.IssueNoPoweredFacilityGz;
                 else if (StatusOverweight)
                     Answer = MyGizmo.IssueOverweightGz;
@@ -363,46 +386,161 @@ namespace LTF_Teleport
         {
             MyWay = Way.No;
             Auto = false;
-            Unlink();
+
+            // TRying to remove spot from workstation it's registered
+            if (RequiresBench && HasRegisteredFacility && ToolsBuilding.CheckBuilding(building))
+                comp_TpBench.RemoveSpot(building);
+
+            UnlinkMe();
+
             DisableCooldown();
             ResetWeight();
 
-            if (!IsCatcher)
+            if (RequiresBench)
                 ResetFacility();
 
             ResetItems();
             ResetPawn();
+            ResetOrder();
         }
-        public void WorkstationOrder()
-        {
-            bool didSomething = false;
-            Tools.Warn("Recieved order", prcDebug);
-            didSomething = TryTeleport();
-            Tools.Warn("didIt: " + Tools.OkStr(didSomething));
-        }
-        private bool TryTeleport()
-        {
-            bool didSomething = false;
-            if (!StatusReady)
-                return didSomething;
-            if (!IsLinked)
-                return didSomething;
 
-            if (MyWay == Way.Out)
+        public bool HasWarmUp
+        {
+            get
             {
-                if (HasItems)
-                    foreach (Thing cur in ThingList)
-                    {
-                        cur.Position = LinkedTpSpot.Position;
-                    }
+                return(WarmUp > 0);
+            }
+        }
+        public bool WarmUpJustStarted
+        {
+            get
+            {
+                return ((TeleportOrder) && (WarmUpBase == WarmUp));
+            }
+        }
+        public float WarmUpProgress
+        {
+            get
+            {
+                if(WarmUpBase == 0) {
+                    Tools.Warn("Unset WarmUpBase", prcDebug);
+                    return 0;
+                }
+                    
+                return (WarmUp/WarmUpBase);
+            }
+        }
+        public void ResetOrder()
+        {
+            TeleportOrder = false;
+
+            Destination = false;
+            Source = false;
+            TpOutStatus = Gfx.AnimStep.na;
+        }
+
+        private void UpdateDistance(bool debug=false)
+        {
+            if(!ToolsBuilding.CheckBuilding(building) || compTwin == null)
+            {
+                Tools.Warn("cant distance", debug);
+            }
+            TwinDistance = building.Position.DistanceTo(Twin.Position);
+            compTwin.TwinDistance = TwinDistance;
+            Tools.Warn("updated distance:"+TwinDistance, debug);
+        }
+
+        private void WorkstationOrder(bool debug = false)
+        {
+            if (!StatusNoIssue)
+            {
+                Tools.Warn("cant accept an order: " + StatusLogNoUpdate, debug);
+                return;
             }
 
-            return didSomething;
+            int FacilityQuality = TwinWorstFacilityQuality();
+
+            //BeginSequenceFrameLength = StartupTickCount = 240 / FacilityQuality + 10 * (int)TwinDistance;
+            BeginSequenceFrameLength = 240 / FacilityQuality + 10 * (int)TwinDistance;
+            WarmUp = WarmUpBase = BeginSequenceFrameLength + 2*23*FrameSlowerMax;
+            
+            //initseq
+            TeleportOrder = true;
+        }
+
+        // Gizmo command no debug pls
+        public void OrderOut()
+        {
+           
+            WorkstationOrder(prcDebug);
+            BeginTpOutAnimSeq();
+
+            Source = true;
+            Destination = false;
+
+            compTwin.Source = false;
+            compTwin.Destination = true;
+        }
+        public void OrderIn()
+        {
+            WorkstationOrder(prcDebug);
+            //BeginTpInAnimSeq();
+            compTwin.OrderOut();
+        }
+        public void OrderSwap()
+        {
+            WorkstationOrder(prcDebug);
+
+            SetBeginAnimLength();
+            Source = true;
+            Destination = false;
+            compTwin.Source = true;
+            compTwin.Destination = false;
+        }
+
+        private bool TryTeleport()
+        {
+            if (!StatusReady)
+                return false;
+            if (!IsLinked)
+                return false;
+
+            switch (MyWay)
+            {
+                case Way.Out:
+                    if (HasItems)
+                        foreach (Thing cur in ThingList)
+                        {
+                            cur.Position = Twin.Position;
+                        }
+                    break;
+                case Way.In:
+                    if( compTwin.HasItems)
+                        foreach (Thing cur in compTwin.ThingList)
+                        {
+                            cur.Position = building.Position;
+                        }
+                    break;
+                case Way.Swap:
+                    if (HasItems)
+                        foreach (Thing cur in ThingList)
+                        {
+                            cur.Position = Twin.Position;
+                        }
+                    if (compTwin.HasItems)
+                        foreach (Thing cur in compTwin.ThingList)
+                        {
+                            cur.Position = building.Position;
+                        }
+                    break;
+            }
+
+            return true;
         }
 
         private void DisableCooldown()
         {
-            currentCooldown = cooldownBase;
+            currentCooldown = 0;
         }
         private void ResetCooldown()
         {
@@ -433,8 +571,48 @@ namespace LTF_Teleport
         {
             return (daddy == facility);
         }
+        public int TwinWorstFacilityQuality(bool debug=false)
+        {
+            int Answer = 0;
+
+            //if (IsCatcher)                return null;
+            if (IsOrphan)
+            {
+                Answer = 999;
+            }
+            else
+            {
+                if (!RequiresBench)
+                {
+                    if (compTwin.HasPoweredFacility)
+                    {
+                        Answer = (int)compTwin.compQuality.Quality;
+                    }
+                    else
+                    {
+                        Tools.Warn("// non catcher from duo has not powered facility", debug);
+                    }
+                }
+                else
+                {
+                    if (compTwin.HasPoweredFacility)
+                    {
+                        Answer = (int)(((compTwin.compQuality.Quality < compQuality.Quality)) ? (compTwin.compQuality.Quality) : (compQuality.Quality));
+                    }
+                    else
+                    {
+                        Answer = (int)compQuality.Quality;
+                    }
+                }
+            }
+            Answer = ToolsQuality.Valid(Answer, debug);
+
+            return Answer;
+        }
+
         public bool CreateLink(Building newLinked, Comp_LTF_TpSpot newComp, bool debug = false)
         {
+
 
             if (newComp == null)
             {
@@ -447,13 +625,35 @@ namespace LTF_Teleport
                 return false;
             }
 
-            LinkedTpSpot = newLinked;
-            linkedComp_LTF_TpSpot = newComp;
-            this.MyLink = ToolsBuilding.Link.Linked;
+            Tools.Warn(
+                "Inc "+
+                "Master - order:" + Tools.OkStr(TeleportOrder) + "; link:"+ Tools.OkStr(IsLinked) +
+                "Slave - order:" + Tools.OkStr(newComp.HasOrder) + "; link:" + Tools.OkStr(newComp.IsLinked),
+                debug);
 
-            newComp.LinkedTpSpot = building;
-            linkedComp_LTF_TpSpot = this;
+            UnlinkMe();
+
+            // This one
+            Twin = newLinked;
+            compTwin = newComp;
+            compTwin.ResetOrder();
+            MyLink = ToolsBuilding.Link.Linked;
+
+            // Remote
+            newComp.Twin = building;
+            newComp.compTwin = this;
             newComp.MyLink = ToolsBuilding.Link.Linked;
+            newComp.compTwin.ResetOrder();
+
+            UpdateDistance();
+
+            Tools.Warn(
+                "Inc " +
+                "Master - order:" + Tools.OkStr(TeleportOrder) + "; link:" + Tools.OkStr(IsLinked) +
+                "Slave - order:" + Tools.OkStr(newComp.HasOrder) + "; link:" + Tools.OkStr(newComp.IsLinked),
+                debug);
+
+            //SoundDef.Named("LTF_TpSpotOut").PlayOneShotOnCamera(parent.Map);
 
             return true;
         }
@@ -476,14 +676,21 @@ namespace LTF_Teleport
             }
         }
 
-        public void Unlink()
-        {
-            if (linkedComp_LTF_TpSpot != null)
-                linkedComp_LTF_TpSpot.Unlink();
 
-            linkedComp_LTF_TpSpot = null;
-            LinkedTpSpot = null;
+        public void UnlinkMe()
+        {
+            Unlink(this);
+        }
+
+        public void Unlink(Comp_LTF_TpSpot caller)
+        {
+            if (IsLinked && this==caller)
+                compTwin.Unlink(this);
+
+            compTwin = null;
+            Twin = null;
             MyLink = ToolsBuilding.Link.Orphan;
+            TwinDistance = 0;
 
             ResetWay();
         }
@@ -491,14 +698,14 @@ namespace LTF_Teleport
         {
             get
             {
-                return (linkedComp_LTF_TpSpot != null);
+                return (Twin != null && compTwin != null);
             }
         }
         public bool IsOrphan
         {
             get
             {
-                return (!IsLinked);
+                return (Twin == null || compTwin == null);
             }
         }
         private void ResetWay()
@@ -507,10 +714,12 @@ namespace LTF_Teleport
         }
         public void ResetFacility()
         {
-            BenchManaged = false;
+            
+            facility = null;
             compPowerFacility = null;
             comp_TpBench = null;
-            facility = null;
+
+            BenchManaged = false;
         }
 
         // Check local tile
@@ -543,8 +752,7 @@ namespace LTF_Teleport
                 if (thing.Faction == Faction.OfPlayer)
                     neededAverageFaction -= 1;
 
-                Pawn pawn = thing as Pawn;
-                if ((pawn != null) && (standingUser != null))
+                if ((thing is Pawn pawn) && (standingUser != null))
                 {
                     //Tools.Warn(building.Label + " concerned about pawns");
                     if ((pawn != standingUser) || (pawn.Position != building.Position))
@@ -592,16 +800,17 @@ namespace LTF_Teleport
 
             return (foundItem);
         }
-        private bool AddSpotItems(List<Thing> allThings, bool clearIfEmpty = true)
+        private bool AddSpotItems(List<Thing> allThings, bool clearIfEmpty = true, bool debug = false)
         {
-            Tools.Warn(building.Label + " checking items", prcDebug);
+            Tools.Warn(building.Label + " checking items", debug);
 
             Thing thing = null;
             bool found = false;
             int pawnN = 0;
 
             Pawn passenger = null;
-            Tools.Warn(building.Label + ":" + allThings.Count, prcDebug);
+            Tools.Warn(building.Label + ":" + allThings.Count, debug);
+            string tellMe = "Scanning: ";
 
             for (int i = 0; i < allThings.Count; i++)
             {
@@ -610,19 +819,19 @@ namespace LTF_Teleport
                 {
                     //Projectile projectile = thing as Projectile;
                     // Can have 2 buildings, there if myself != null, myself=parent => idgaf
-                    if ((thing.def.mote != null) || thing.def.IsFilth)
+                    if ((thing.def.mote != null) || thing.def.IsFilth || thing.def.IsBuildingArtificial)
                     {
-                        Tools.Warn("mote or filth skip", prcDebug);
+                        tellMe += "mote / filth / building skip";
+                        Tools.Warn(tellMe, debug);
                         continue;
                     }
-                    Building myself = thing as Building;
-                    if ((myself != null) && (myself == building))
+                    if (thing is Building myself)
                     {
-                        Tools.Warn("Wont self register", prcDebug);
+                        tellMe += "Wont self register as an item";
+                        Tools.Warn(tellMe, debug);
                         continue;
                     }
-                    Pawn pawn = thing as Pawn;
-                    if (pawn != null)
+                    if (thing is Pawn pawn)
                     {
                         passenger = pawn;
                         pawnN += 1;
@@ -631,13 +840,12 @@ namespace LTF_Teleport
                     if (!ThingList.Contains(thing))
                     {
                         AddItem(thing);
-
-                        Tools.Warn(thing.Label + " added", prcDebug);
+                        tellMe += thing.Label + " added;";
                     }
-
                     found = true;
                 }
             }
+            Tools.Warn(tellMe, debug);
 
             if (pawnN == 0)
             {
@@ -654,7 +862,7 @@ namespace LTF_Teleport
             {
                 SetPawn(passenger);
 
-                Tools.Warn(passenger.LabelShort + " added", prcDebug);
+                Tools.Warn(passenger.LabelShort + " added", debug);
             }
 
             if (!found)
@@ -782,29 +990,34 @@ namespace LTF_Teleport
                 return (TpOutStatus == Gfx.AnimStep.na);
             }
         }
-        private void SetBeginAnimLength()
+        private void SetBeginAnimLength(bool TpIn=false)
         {
-            beginSequenceI = beginSequenceFrameLength;
+            beginSequenceI = BeginSequenceFrameLength;
+            //beginSequenceI                ((TpIn) ? (5) : (WarmUpBase));
         }
-        public void BeginAnimSeq()
+        public void BeginTpOutAnimSeq()
         {
             TpOutStatus = Gfx.AnimStep.begin;
             SetBeginAnimLength();
         }
-        public void IncBeginAnim(bool debug = false)
+        public void BeginTpInAnimSeq()
         {
-            //AnimStatus(debug);
+            TpOutStatus = Gfx.AnimStep.begin;
+            SetBeginAnimLength(true);
+        }
+        public bool IncBeginAnim(bool debug = false)
+        {
             beginSequenceI--;
             if (beginSequenceI <= 0)
             {
-                TpOutNextAnim();
-                SoundDef.Named("LTF_TpSpotOut").PlayOneShotOnCamera(parent.Map);
+                Tools.Warn("%%%%%%%%%%%%%%%Anim End", debug);
+                return true;
             }
-            //AnimStatus(debug);
+            return false;
         }
         public void AnimStatus(bool debug = false)
         {
-            Tools.Warn("AnimStatus=>" + TpOutStatus + ":" + beginSequenceI + "/" + beginSequenceFrameLength, debug);
+            Tools.Warn("AnimStatus - " + TpOutStatus + ": " + beginSequenceI + "/" + BeginSequenceFrameLength, debug);
         }
         public float AnimOpacity
         {
@@ -825,13 +1038,50 @@ namespace LTF_Teleport
             return FrameSlower;
         }
 
-        public void TpOutNextAnim()
+        public bool NextAnim(bool debug=false)
         {
-            //if (TpOutStatus == Gfx.AnimStep.na)TpOutStatus = Gfx.AnimStep.begin;
-            if (TpOutStatus == Gfx.AnimStep.begin) TpOutStatus = Gfx.AnimStep.active;
-            else if (TpOutStatus == Gfx.AnimStep.active) TpOutStatus = Gfx.AnimStep.end;
-            else if (TpOutStatus == Gfx.AnimStep.end) TpOutStatus = Gfx.AnimStep.na;
+            bool Answer = false;
+            if (compTwin == null)
+            {
+                Tools.Warn("//bad twin comp", true);
+                return false;
+            }
+                
+            if (Source)
+                switch (TpOutStatus)
+                {
+                    case Gfx.AnimStep.begin:
+                        TpOutStatus = Gfx.AnimStep.active;
+                        //BeginSequenceFrameLength
+                        break;
+                    case Gfx.AnimStep.active:
+                        TpOutStatus = Gfx.AnimStep.end;
+                        compTwin.BeginTpInAnimSeq();
+                        break;
+                    case Gfx.AnimStep.end:
+                        TpOutStatus = Gfx.AnimStep.na;
+                        Answer = true;
+                        break;
+                }
+
+            if (Destination)
+                switch (compTwin.TpInStatus)
+                {
+                    case Gfx.AnimStep.begin:
+                        compTwin.TpInStatus = Gfx.AnimStep.active;
+                        break;
+                    case Gfx.AnimStep.active:
+                        compTwin.TpInStatus = Gfx.AnimStep.end;
+                        break;
+                    case Gfx.AnimStep.end:
+                        compTwin.TpInStatus = Gfx.AnimStep.na;
+                        Answer = true;
+                        break;
+                }
+
             SetFrameSlower();
+
+            return Answer;
         }
 
         //public void StartVanish(){drawVanish = true;}
@@ -865,14 +1115,14 @@ namespace LTF_Teleport
                 if (!HasRegisteredFacility)
                     Answer ^= BuildingStatus.noFacility;
 
-                if (HasNothing)
-                    Answer ^= BuildingStatus.noItem;
-
                 if (Tools.CapacityOverusing(currentWeight, weightCapacity))
                     Answer ^= BuildingStatus.overweight;
 
                 if (Tools.CapacityUsing(currentCooldown))
                     Answer ^= BuildingStatus.cooldown;
+
+                if (HasNothing)
+                    Answer ^= BuildingStatus.noItem;
 
                 if (Answer == BuildingStatus.na)
                     Answer = BuildingStatus.capable;
@@ -887,54 +1137,95 @@ namespace LTF_Teleport
         private bool StatusNoItem { get { return HasStatus(BuildingStatus.noItem); } }
         private bool StatusHasItem { get { return !StatusNoItem; } }
         public bool StatusOverweight { get { return HasStatus(BuildingStatus.overweight); } }
+        public bool IsLightBoned { get { return !StatusOverweight; } }
         public bool StatusChillin { get { return HasStatus(BuildingStatus.cooldown); } }
+        public bool IsHot { get { return !StatusChillin; } }
+
         public bool StatusReady { get { return HasStatus(BuildingStatus.capable); } }
-        public string StatusExplanation
+        public bool StatusNoIssue {
+            get {
+                bool Answer = true;
+
+                if (RequiresPower)
+                    Answer &= HasPower;
+
+                if (RequiresBench)
+                    Answer &= HasPoweredFacility;
+
+                Answer &= IsLinked;
+                Answer &= IsHot;
+                Answer &= IsLightBoned;
+
+                return Answer;
+            }
+        }
+        public string StatusLog(bool updateDisplay = true)
         {
-            get
+            string bla = string.Empty;
+
+            if (StatusNoIssue)
             {
-                string bla = string.Empty;
 
-                if (!IsCatcher)
-                {
-                    if (StatusNoPower)
-                    {
-                        bla += " No power;";
-                        return bla;
-                    }
-                    if (StatusNoFacility)
-                    {
-                        bla += " No facility;";
-                        return bla;
-                    }
-                }
-                if (StatusOverweight)
-                {
-                    bla += ' ' + currentWeight + "kg. >" + weightCapacity + " kg.";
-                }
-                if (StatusChillin)
-                {
-                    float coolPerc = currentCooldown / cooldownBase;
-                    bla += " Cooldown: " + coolPerc.ToStringPercent("F0");
-                }
-                if (StatusNoItem)
-                {
-                    bla += " Nothing.";
-                }
+                int itemCount = RegisteredCount;
+                string grammar = ((RegisteredCount > 1) ? ("s") : (""));
 
-                if (StatusReady)
-                {
-                    int itemCount = RegisteredCount;
-                    string grammar = ((RegisteredCount > 1) ? ("s") : (""));
-                    bla = '[' + RegisteredCount + "] item" + grammar + ". " + Tools.CapacityString(currentWeight, weightCapacity) + " kg.";
+                bla += Tools.OkStr(TeleportOrder) +
+                    ((TeleportOrder) ? ("Roger;") : ("Say what?"));
 
-                }
-                bla += (IsOrphan) ? (" Orphan.") : (" Linked.");
+                bla = (!HasItems)?
+                    ("Nothing"):
+                    (RegisteredCount + " item" + grammar + ' ' + Tools.CapacityString(currentWeight, weightCapacity) + " kg")+
+                    ';';
+
+                
+                if (TeleportOrder && HasWarmUp)
+                    bla += "\nWarm up: " + WarmUpProgress.ToStringPercent("F0") + "% (" + Tools.Ticks2Str(WarmUpBase - WarmUp) + " left)";
 
                 return bla;
             }
+
+
+            if (RequiresPower && StatusNoPower)
+            {
+                bla += " No power;";
+            }
+
+            if (RequiresBench){
+                if( StatusNoFacility)
+                    bla += " No facility;";
+                else if (!HasPoweredFacility)
+                    bla += " No powered facility;";
+            }
+
+            if (StatusOverweight)
+                bla += ' ' + currentWeight + "kg. >" + weightCapacity + " kg;";
+
+            if (StatusChillin) { 
+                float coolPerc = currentCooldown / cooldownBase;
+                bla += " Cooldown " + ((updateDisplay) ? (coolPerc.ToStringPercent("F0")) : ("undergoing")) + ";";
+            }
+
+            if (IsOrphan)
+                bla += " Orphan.";
+  
+            return bla;
+        }
+        public string StatusLogUpdated
+        {
+            get
+            {
+                return StatusLog();
+            }
         }
 
+        public string StatusLogNoUpdate
+        {
+            get
+            {
+                return StatusLog(false);
+            }
+        }
+        /*
         public bool IsCatcher
         {
             get
@@ -942,13 +1233,14 @@ namespace LTF_Teleport
                 return (!RequiresPower);
             }
         }
+        */
 
         // Overrides
         public override void PostDraw()
         {
             base.PostDraw();
 
-            if ( (buildingPos == null) || (building.Rotation != Rot4.North))
+            if ((buildingPos == null) || (building.Rotation != Rot4.North))
             {
                 Tools.Warn("null pos draw", gfxDebug);
                 return;
@@ -976,7 +1268,7 @@ namespace LTF_Teleport
 
             // >>>> Calculate mat
             // calculate underlay
-            if (drawUnderlay && !IsCatcher)
+            if (drawUnderlay && RequiresPower)
             {
                 if ((HasItems) || ((HasNothing) && (HasPoweredFacility)) || (StatusReady))
                     underlay = MyGfx.Status2UnderlayMaterial(this, gfxDebug);
@@ -989,10 +1281,10 @@ namespace LTF_Teleport
             if (drawOverlay)
             {
                 //if( (!TpOutNa) && (TpOutBegin) )
-                if (TpOutBegin)
+                if (TpOutBegin && TeleportOrder && beginSequenceI>0)
                     overlay = MyGfx.Status2OverlayMaterial(this, FactionMajority, gfxDebug);
 
-                if (!IsCatcher && (!StatusReady) && (HasItems))
+                if (RequiresPower && !StatusReady && HasItems)
                     warning = MyGfx.Status2WarningMaterial(this, gfxDebug);
 
                 Tools.Warn("Overlay calculating - warning: " + (warning != null) + "; anim: " + (overlay != null), gfxDebug);
@@ -1000,45 +1292,53 @@ namespace LTF_Teleport
 
             // >>>> Draw mat
             // draw Underlay
-            if (drawUnderlay && !IsCatcher)
+            if (underlay != null)
             {
-                if (underlay != null)
-                {
-                    float underlayOpacity = 1f;
+                float underlayOpacity = 1f;
 
-                    float underlayAngle = Gfx.PulseFactorOne(parent);
+                float underlayAngle = Gfx.PulseFactorOne(parent);
 
-                    if (StatusReady)
-                        underlayOpacity = .8f + .2f * (Rand.Range(0, 1f));
-                    else if ((HasNothing && HasPoweredFacility))
-                        underlayOpacity = .6f + .3f * (Rand.Range(0, 1f));
-                    if (HasItems)
-                        underlayOpacity = .5f + .2f * (Rand.Range(0, 1f));
+                if (StatusReady)
+                    underlayOpacity = .8f + .2f * (Rand.Range(0, 1f));
+                else if ((HasNothing && HasPoweredFacility))
+                    underlayOpacity = .6f + .3f * (Rand.Range(0, 1f));
+                if (HasItems)
+                    underlayOpacity = .5f + .2f * (Rand.Range(0, 1f));
 
-                    Gfx.DrawTickRotating(parent, underlay, 0, 0, 1, underlayAngle * 360, underlayOpacity, Gfx.Layer.under, gfxDebug);
-                }
-
-                if (underlay2 != null)
-                {
-                    float underlay2Opacity = Gfx.VanillaPulse(parent);
-                    float underlay2Angle = Gfx.RealLinear(parent, 15 + currentWeight * 5, gfxDebug);
-
-                    Gfx.DrawTickRotating(parent, underlay2, 0, 0, 1, underlay2Angle * 360, underlay2Opacity, Gfx.Layer.under, gfxDebug);
-                }
-                Tools.Warn("Underlay drew - 1: " + (underlay != null) + "; 2: " + (underlay2 != null), gfxDebug);
+                //Gfx.DrawTickRotating(parent, underlay, 0, 0, 1, underlayAngle * 360, underlayOpacity, Gfx.Layer.under, gfxDebug);
+                Gfx.DrawTickRotating(parent, underlay, 0, 0, 1, underlayAngle * 360, underlayOpacity, Gfx.Layer.under, false);
             }
-            //draw Overlay
-            if (drawOverlay)
+
+            if (underlay2 != null)
             {
-                if (!IsCatcher && !StatusReady && warning != null)
-                    Gfx.PulseWarning(building, warning);
+                float underlay2Opacity = Gfx.VanillaPulse(parent);
+                //float underlay2Angle = Gfx.RealLinear(parent, 15 + currentWeight * 5, gfxDebug);
+                float underlay2Angle = Gfx.RealLinear(parent, 15 + currentWeight * 5, false);
 
-                 if ((TpOutBegin) && (overlay != null))
-                {
-                    float swirlSize = Gfx.VanillaPulse(parent) * 1.5f;
-                    Gfx.DrawTickRotating(parent, overlay, 0, 0, swirlSize, Gfx.LoopFactorOne(parent) * 360, 1, Gfx.Layer.over, gfxDebug);
-                }
+                //Gfx.DrawTickRotating(parent, underlay2, 0, 0, 1, underlay2Angle * 360, underlay2Opacity, Gfx.Layer.under, gfxDebug);
+                Gfx.DrawTickRotating(parent, underlay2, 0, 0, 1, underlay2Angle * 360, underlay2Opacity, Gfx.Layer.under, false);
+            }
+            Tools.Warn("Underlay drew - 1: " + (underlay != null) + "; 2: " + (underlay2 != null), gfxDebug);
 
+            //draw Overlay
+            if (!drawOverlay)
+            {
+                Tools.Warn("no overlay asked", gfxDebug);
+                return;
+            }
+
+            if (RequiresPower && warning != null)
+                Gfx.PulseWarning(building, warning);
+
+            if (TeleportOrder && TpOutBegin && (overlay != null))
+            {
+                float swirlSize = Gfx.VanillaPulse(parent) * 1.5f;
+                //Gfx.DrawTickRotating(parent, overlay, 0, 0, swirlSize, Gfx.LoopFactorOne(parent) * 360, 1, Gfx.Layer.over, gfxDebug);
+                Gfx.DrawTickRotating(parent, overlay, 0, 0, swirlSize, Gfx.LoopFactorOne(parent) * 360, 1, Gfx.Layer.over, false);
+
+            }
+
+            if (SlideShowOn)
                 if (TpOutActive)
                 {
                     MyGfx.ActiveAnim.Draw(parent.DrawPos, Rot4.North, this.parent, 0.027f * Rand.Range(-1, 1) * 360);
@@ -1049,9 +1349,7 @@ namespace LTF_Teleport
                     vec.z += .3f;
                     MyGfx.EndAnim.Draw(vec, Rot4.North, this.parent, 0f);
                 }
-
-                Tools.Warn("Overlay drew - warning: " + (warning != null) + "; anim: " + (overlay != null), gfxDebug);
-            }
+            Tools.Warn("Overlay drew - warning: " + (warning != null) + "; anim: " + (overlay != null), gfxDebug);
         }
 
         public override void PostSpawnSetup(bool respawningAfterLoad)
@@ -1062,14 +1360,16 @@ namespace LTF_Teleport
             buildingPos = building.DrawPos;
             buildingName = building?.LabelShort;
             RequiresPower = Props.PowerRequired;
+            RequiresBench = Props.BenchRequired;
 
-            if (!IsCatcher)
+            if (RequiresPower)
             {
                 //Building comp
                 compPowerTrader = building?.TryGetComp<CompPowerTrader>();
                 compAffectedByFacilities = ToolsBuilding.GetAffectedComp(building, prcDebug);
                 //Facility
-                facility = ToolsBuilding.GetFacility(compAffectedByFacilities, prcDebug);
+                //facility = ToolsBuilding.GetFacility(compAffectedByFacilities, prcDebug);
+                facility = ToolsBuilding.GetFacility(compAffectedByFacilities, false);
                 //Facility power comp
                 compPowerFacility = facility?.TryGetComp<CompPowerTrader>();
                 comp_TpBench = facility?.TryGetComp<Comp_TpBench>();
@@ -1089,7 +1389,12 @@ namespace LTF_Teleport
                 Tools.Warn("reset bc bad link", prcDebug);
                 ResetSettings();
             }
-                
+
+            if (Twin != null)
+            {
+                compTwin=Twin.TryGetComp<Comp_LTF_TpSpot>();
+            }
+
             DumpProps();
         }
         public override void CompTick()
@@ -1098,48 +1403,50 @@ namespace LTF_Teleport
 
             Tools.Warn(" >>>TICK begin<<< ", prcDebug);
 
+            Tools.Warn("Validated order:" +
+    " warmup: " + Tools.CapacityString(WarmUp, WarmUpBase) +
+    " begin seq: " + Tools.CapacityString(beginSequenceI, BeginSequenceFrameLength),
+    prcDebug && TeleportOrder);
+
             if (!ToolsBuilding.CheckBuilding(building))
             {
-                Tools.Warn("comp building not legit", prcDebug);
+                Tools.Warn("comp building not legit" + " - Exiting", prcDebug);
                 return;
             }
 
             string tellMe = string.Empty;
             tellMe = Tools.OkStr(StatusReady) + "[" + TeleportCapable + "]" + buildingName + ": ";
 
-            if (!IsCatcher)
+            if (RequiresPower)
             {
                 // Power - Will return if status
-                tellMe += "Power: " + Tools.OkStr(StatusNoPower) + "; ";
+                tellMe += "Power: " + Tools.OkStr(HasPower) + "; ";
                 if (StatusNoPower)
                 {
-                    if (HasRegisteredFacility)
+                    if (RequiresBench && HasRegisteredFacility)
                     {
-                        if (comp_TpBench != null && building != null)
-                            comp_TpBench.RemoveSpot(building);
-                        ResetFacility();
+                        ResetSettings();
                     }
-                    Tools.Warn(tellMe, prcDebug);
+                    Tools.Warn(tellMe + " - Exiting", prcDebug);
                     return;
                 }
+            }
 
+            if (RequiresBench)
+            {
                 // Facility - Will return if status
-                tellMe += "Facility: " + Tools.OkStr(StatusNoFacility) + "; ";
+                tellMe += "Facility: " + Tools.OkStr(HasRegisteredFacility) + "; ";
                 if (StatusNoFacility)
                 {
                     //Facility
-                    facility = ToolsBuilding.GetFacility(compAffectedByFacilities, prcDebug);
+                    facility = ToolsBuilding.GetFacility(compAffectedByFacilities, false);
                     //Facility power comp
                     compPowerFacility = facility?.TryGetComp<CompPowerTrader>();
                     comp_TpBench = facility?.TryGetComp<Comp_TpBench>();
                     tellMe += "Found: " + Tools.OkStr(HasRegisteredFacility) + ((HasRegisteredFacility) ? (facility.LabelShort) : ("nothing")) + "; ";
-                }
-                if (StatusNoFacility)
-                {
-                    Tools.Warn(tellMe, prcDebug);
+                    Tools.Warn(tellMe + " - Exiting", prcDebug);
                     return;
                 }
-
 
                 //Okk
                 tellMe += "FacilityPower: " + Tools.OkStr(HasPoweredFacility);
@@ -1147,14 +1454,17 @@ namespace LTF_Teleport
                 {
                     ResetFacility();
                     compPowerFacility = facility?.TryGetComp<CompPowerTrader>();
-                    Tools.Warn(tellMe, prcDebug);
+                    Tools.Warn(tellMe + " - Exiting", prcDebug);
                     return;
                 }
 
                 bool belongs = Dependencies.CheckBuildingBelongsFacility(compAffectedByFacilities, facility, prcDebug);
                 tellMe += "Belongs to " + facility.Label + ':' + facility.ThingID + "?" + Tools.OkStr(belongs);
                 if (!belongs)
+                {
+                    Tools.Warn(tellMe + " - Exiting", prcDebug);
                     return;
+                }
 
                 if (!BenchManaged)
                 {
@@ -1164,6 +1474,7 @@ namespace LTF_Teleport
                         comp_TpBench.AddSpot(building);
                     }
                 }
+                else BenchManaged = true;
             }
 
             Tools.Warn("TICK checking: " + tellMe, prcDebug);
@@ -1184,9 +1495,10 @@ namespace LTF_Teleport
                 tellMe += " nothing2do;";
             }
 
-            if ((StatusChillin) || (StatusOverweight) || (StatusNoItem))
+            //if ((StatusChillin) || (StatusOverweight) || (StatusNoItem))
+            if (StatusChillin || StatusOverweight)
             {
-                Tools.Warn("TICK exit bc not ready: " + tellMe, prcDebug);
+                Tools.Warn(tellMe + "TICK exit bc not ready: " + tellMe, prcDebug);
                 return;
             }
 
@@ -1197,25 +1509,52 @@ namespace LTF_Teleport
                 //
             }
 
-            tellMe += StatusExplanation;
+            //(TpOutBegin) = hax
+            if (TeleportOrder)
+            {
+                if (WarmUp > 0)
+                {
+                    WarmUp--;
+
+                    tellMe += Tools.CapacityString(WarmUp, WarmUpBase) + ":" + WarmUpProgress;
+                    myOpacity = ((TpOutActive) ? (.6f + .4f * Rand.Range(0, 1)) : (1));
+
+                    if (TpOutBegin && beginSequenceI>0)
+                        if (IncBeginAnim(prcDebug))
+                        {
+                            NextAnim();
+                            SlideShowOn = true;
+                        }
+
+                    //if (WarmUp <= (int).5f * (FrameSlowerMax * 23))
+                    //if(WarmUp == (int).9f * FrameSlowerMax * 23) 
+                    /*
+                    BeginSequenceFrameLength = 240 / FacilityQuality + 10 * (int)TwinDistance;
+                    WarmUp = WarmUpBase = BeginSequenceFrameLength + 2 * 23 * FrameSlowerMax;
+                    */
+                    if (WarmUp == (int)1.5f * FrameSlowerMax * 23)
+                    {
+                        tellMe += "Trying to teleport";
+                        bool didIt = false;
+                        if (didIt = TryTeleport())
+                        {
+                            SoundDef.Named("LTF_TpSpotOut").PlayOneShotOnCamera(parent.Map);
+                            ResetOrder();
+                            ResetCooldown();
+                        }
+                        tellMe += ">>>didit: " + Tools.OkStr(didIt) + "<<<";
+                    }
+                }
+                else
+                {
+                    SlideShowOn = false;
+                }
+            }
             AnimStatus(prcDebug);
-
-            if (TpOutBegin)
-            {
-                IncBeginAnim(prcDebug);
-            }
-
-            if (TpOutActive)
-            {
-                myOpacity = .6f + .4f * Rand.Range(0, 1);
-            }
-            else
-            {
-                myOpacity = 1;
-            }
-
+            tellMe += StatusLogUpdated;
             Tools.Warn("TICK End: " + tellMe, prcDebug);
         }
+
         public override void PostExposeData()
         {
             base.PostExposeData();
@@ -1224,10 +1563,15 @@ namespace LTF_Teleport
             Scribe_References.Look(ref standingUser, "user");
             Scribe_Collections.Look(ref ThingList, "things", LookMode.Reference, new object[0]);
 
-            Scribe_References.Look(ref LinkedTpSpot, "linkedspot");
+            Scribe_References.Look(ref Twin, "linkedspot");
+
             Scribe_Values.Look(ref MyLink, "LinkStatus");
             Scribe_Values.Look(ref MyWay, "way");
             Scribe_Values.Look(ref Auto, "auto");
+
+            Scribe_Values.Look(ref TeleportOrder, "order");
+            Scribe_Values.Look(ref WarmUp, "warmup");
+            Scribe_Values.Look(ref WarmUpBase, "warmupbase");
 
         }
         public override string CompInspectStringExtra()
@@ -1235,8 +1579,8 @@ namespace LTF_Teleport
             string text = base.CompInspectStringExtra();
             string result = string.Empty;
 
-            result += Tools.OkStr(StatusReady) + " ";
-            result += StatusExplanation;
+            result += Tools.OkStr(StatusNoIssue) + " ";
+            result += StatusLogUpdated;
 
             if (!text.NullOrEmpty())
             {
@@ -1282,7 +1626,7 @@ namespace LTF_Teleport
                 //String myLabel = ((IsLinked) ? ("Unlink") : ("Right click with a colonist to link"));
                 String myDesc = (
                     (IsLinked) ?
-                    (' ' + LinkName + "->" + NextLinkName + "\nCurrent: " + Tools.PosStr(LinkedTpSpot.Position)) :
+                    (' ' + LinkName + "->" + NextLinkName + "\nCurrent: " + Tools.PosStr(Twin.Position)) :
                     ("Right click with a colonist to link to another " + MyDefName)
                );
 
@@ -1291,11 +1635,11 @@ namespace LTF_Teleport
                     icon = myGizmo,
                     defaultLabel = myLabel,
                     defaultDesc = myDesc,
-                    action = new Action(this.Unlink)
+                    action = new Action(UnlinkMe)
                 };
             }
 
-            if (HasPower && !IsCatcher)// && !StatusNoFacility)
+            if (RequiresPower && HasPower)// && !StatusNoFacility)
             {
                 // Way to teleport
                 if (ValidWay)
@@ -1428,7 +1772,7 @@ namespace LTF_Teleport
                         defaultLabel = "tpOut " + TpOutStatus + "->" + TpOutBegin,
                         action = delegate
                         {
-                            BeginAnimSeq();
+                            BeginTpInAnimSeq();
                         }
                     };
 
@@ -1518,7 +1862,7 @@ namespace LTF_Teleport
         {
             if (IsLinked)
             {
-                GenDraw.DrawLineBetween(this.parent.TrueCenter(), LinkedTpSpot.TrueCenter(), SimpleColor.Cyan);
+                GenDraw.DrawLineBetween(this.parent.TrueCenter(), Twin.TrueCenter(), SimpleColor.Cyan);
             }
         }
     }

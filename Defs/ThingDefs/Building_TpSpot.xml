@@ -112,6 +112,10 @@ Requires a teleport bench.</description>
 			<weightSpectrum>160</weightSpectrum>
 			<cooldownBase>3600</cooldownBase>
 			<cooldownSpectrum>-2400</cooldownSpectrum>
+			<!--
+			<PowerRequired>true</PowerRequired>
+			<BenchRequired>true</BenchRequired>
+			-->
 		</li>
 	
 		<li Class="CompProperties_Glower">
