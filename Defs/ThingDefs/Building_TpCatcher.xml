@@ -39,7 +39,7 @@
 	<!-- <clearBuildingArea>false</clearBuildingArea> -->
 	<rotatable>false</rotatable>
 	<stealable>true</stealable>
-    <defaultPlacingRot>North</defaultPlacingRot>
+    <!-- <defaultPlacingRot>North</defaultPlacingRot> -->
 	
     <designationCategory>Security</designationCategory>
     <passability>Standable</passability>
@@ -52,7 +52,7 @@
 		<sowTag>SupportPlantsOnly</sowTag>
 		<canPlaceOverImpassablePlant>false</canPlaceOverImpassablePlant>
 		
-		<ai_chillDestination>true</ai_chillDestination>
+		<ai_chillDestination>false</ai_chillDestination>
 		<isEdifice>false</isEdifice>
 		<preventDeteriorationOnTop>false</preventDeteriorationOnTop>
 		
@@ -73,7 +73,7 @@
 	
 		<stuffCategories>
 			<li>Fabric</li>
-			<li>Leathery</li>
+			<!-- <li>Leathery</li> -->
 		</stuffCategories>
 		<costStuffCount>50</costStuffCount>
 		<costList>

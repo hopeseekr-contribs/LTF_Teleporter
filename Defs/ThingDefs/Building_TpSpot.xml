@@ -52,7 +52,7 @@ Requires a teleport bench.</description>
 		<sowTag>SupportPlantsOnly</sowTag>
 		<canPlaceOverImpassablePlant>false</canPlaceOverImpassablePlant>
 		
-		<ai_chillDestination>true</ai_chillDestination>
+		<ai_chillDestination>false</ai_chillDestination>
 		<isEdifice>false</isEdifice>
 		<preventDeteriorationOnTop>false</preventDeteriorationOnTop>
 		

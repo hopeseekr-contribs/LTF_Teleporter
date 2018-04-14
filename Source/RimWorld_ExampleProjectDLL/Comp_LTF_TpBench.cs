@@ -27,9 +27,10 @@ namespace LTF_Teleport
         int GizmoIndex = 0;
         /* Comp */
         /******************/
-        private CompPowerTrader powerComp;
+        private CompPowerTrader compPower;
         public CompQuality compQuality;
-
+        private CompFacility compFacility;
+        
         //private float benchRadius = 35.7f;
 
         private List<Building> Registry = new List<Building>();
@@ -37,7 +38,8 @@ namespace LTF_Teleport
         private const float defaultWorkAmount = 3600f; // 120sec = 60  * 120 = 7200 
         private float workGoal = defaultWorkAmount;
         private float workProgress = 0;
-
+        // reach spots
+        float FacilityRange = 40f;
         private bool mindcontrolEnabled = false;
         //bool mindReachable = false;
 
@@ -115,10 +117,12 @@ namespace LTF_Teleport
             buildingName = building?.LabelShort;
             TpSpotName = Tools.LabelByDefName("LTF_TpSpot", prcDebug);
             //Building comp
-            powerComp = building?.TryGetComp<CompPowerTrader>();
+            compPower = building?.TryGetComp<CompPowerTrader>();
             compQuality = building?.TryGetComp<CompQuality>();
+            compFacility = building?.TryGetComp<CompFacility>();
+            FacilityRange = compFacility?.Props.maxDistance ?? 0f;
 
-            SetFacilityCapacity(compQuality);
+            WeightFacilityCapacity(compQuality);
         }
 
         /*
@@ -191,7 +195,13 @@ namespace LTF_Teleport
                 Tools.Warn("Trying to remove a non tp spot", prcDebug);
 
             Registry.Remove(target);
+            IndexCorrecter();
         }
+        public void IndexCorrecter()
+        {
+            GizmoIndex = Tools.LimitToRange(GizmoIndex, 0, Registry.Count - 1);
+        }
+        
         public void AddSpot(Building target)
         {
             if ((target == null) || (target.def.defName != "LTF_TpSpot"))
@@ -237,7 +247,7 @@ namespace LTF_Teleport
                 return (compQuality != null);
             }
         }
-        private void SetFacilityCapacity(CompQuality comp, bool debug=false)
+        private void WeightFacilityCapacity(CompQuality comp, bool debug=false)
         {
             Tools.Warn(">Settin Quality>" + Props.FacilityCapacityBase + ';' + Props.FacilityCapacitySpectrum + ">FacilityCapacity>" + FacilityCapacity, debug);
             FacilityCapacity = (int)Tools.WeightedCapacity(Props.FacilityCapacityBase, Props.FacilityCapacitySpectrum, comp);
@@ -270,7 +280,7 @@ namespace LTF_Teleport
         private void ChangeQuality(bool better = true)
         {
             ToolsQuality.ChangeQuality(building, compQuality, better);
-            SetFacilityCapacity(compQuality);
+            WeightFacilityCapacity(compQuality);
         }
         private void BetterQuality()
         {
@@ -289,6 +299,23 @@ namespace LTF_Teleport
             return Answer;
         }
 
+        private float Bench2SpotDistance(Building spot)
+        {
+            float Answer = 999f;
+            if (!ToolsBuilding.CheckBuilding(spot))
+                return Answer;
+
+            Answer = building.Position.DistanceTo(spot.Position);
+            return Answer;
+        }
+        bool InRangeSpot(Building spot)
+        {
+            bool Answer = false;
+            if (Bench2SpotDistance(spot) < FacilityRange)
+                return true;
+
+            return Answer;
+        }
         public override void CompTick()
         {
             base.CompTick();
@@ -296,21 +323,23 @@ namespace LTF_Teleport
             Tools.Warn(" >>>TICK begin<<< ", prcDebug);
             if (HasSpot)
             {
-
                 if (Tools.TwoTicksOneTrue())
                 {
-                    foreach(Building cur in Registry)
+                    //foreach(Building cur in Registry)
+                    for (int i = Registry.Count-1; i>=0; i--)
                     {
-                        if( (!ToolsBuilding.CheckBuilding(cur)) || (!ToolsBuilding.CheckPower(cur)) ){
+                        Building cur = Registry[i];
+                        if( (!ToolsBuilding.CheckBuilding(cur)) || (!ToolsBuilding.CheckPower(cur)) || !InRangeSpot(cur)){
                             Comp_LTF_TpSpot comp_LTF_TpSpot  = cur?.TryGetComp<Comp_LTF_TpSpot>();
                             if(comp_LTF_TpSpot!=null)
                                 comp_LTF_TpSpot.ResetFacility();
-                            Registry.Remove(cur);
+                            RemoveSpot(cur);
                         } 
                     }
-
                 }
+                IndexCorrecter();
             }
+
 
             Tools.Warn(" >>>TICK end<<< ", prcDebug);
         }
@@ -520,15 +549,11 @@ namespace LTF_Teleport
         {
             if (!Registry.NullOrEmpty())
             {
-                GenDraw.DrawLineBetween(this.parent.TrueCenter(), CurrentSpot.TrueCenter(), SimpleColor.Red);
-                /*
-                foreach (Building cur in Registry)
-                {
-                    if(cur == CurrentSpot) GenDraw.DrawLineBetween(this.parent.TrueCenter(), CurrentSpot.TrueCenter(), SimpleColor.Red);
-                    else                   GenDraw.DrawLineBetween(this.parent.TrueCenter(), cur.TrueCenter());
-                    
-                }
-                */
+                GenDraw.DrawLineBetween(this.parent.TrueCenter(), CurrentSpot.TrueCenter(), SimpleColor.Cyan);
+            }
+            if (FacilityRange >0f)
+            {
+                GenDraw.DrawRadiusRing(this.parent.Position, FacilityRange/2);
             }
         }
     }

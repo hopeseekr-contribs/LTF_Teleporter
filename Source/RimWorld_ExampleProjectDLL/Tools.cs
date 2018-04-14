@@ -83,6 +83,12 @@ namespace LTF_Teleport
             if (val > max) return max;
             return val;
         }
+        public static int LimitToRange(int val, int min, int max)
+        {
+            if (val < min) return min;
+            if (val > max) return max;
+            return val;
+        }
         public static int NextIndexRoundBrowser(int index, int count)
         {
             return ((index == count - 1) ? (0) : (index + 1));

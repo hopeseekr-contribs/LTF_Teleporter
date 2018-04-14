@@ -27,7 +27,7 @@ namespace LTF_Teleport
         Vector3 buildingPos;
         String buildingName = string.Empty;
         String MyDefName = string.Empty;
-
+        Map MyMap = null;
         public bool RequiresPower = true;
         public bool RequiresBench = true;
         public enum Way { No = 0, Out = 1, In = 2, Swap = 3 };
@@ -498,6 +498,28 @@ namespace LTF_Teleport
             compTwin.Destination = false;
         }
 
+        private void TeleportItem(Thing thing, IntVec3 destination, bool debug=false)
+        {
+            if (thing == null) return;
+
+            if (thing is Pawn pawn)
+            {
+                bool PastDraft = pawn.Drafted;
+                Tools.Warn("Pawn moving :" + pawn.NameStringShort + " draft:" + pawn.Drafted, debug);
+                pawn.drafter.Drafted = false;
+
+                pawn.DeSpawn();
+                GenSpawn.Spawn(pawn, destination, MyMap);
+                pawn.drafter.Drafted = PastDraft;
+
+                Tools.Warn("Pawn moved :" + pawn.NameStringShort + " draft:" + pawn.Drafted, debug);
+            }
+            else
+            {
+                thing.Position = destination;
+            }
+        }
+
         private bool TryTeleport()
         {
             if (!StatusReady)
@@ -508,17 +530,13 @@ namespace LTF_Teleport
             switch (MyWay)
             {
                 case Way.Out:
+                case Way.In:
                     if (HasItems)
                         foreach (Thing cur in ThingList)
                         {
-                            cur.Position = Twin.Position;
-                        }
-                    break;
-                case Way.In:
-                    if( compTwin.HasItems)
-                        foreach (Thing cur in compTwin.ThingList)
-                        {
-                            cur.Position = building.Position;
+                            IntVec3 destination = ((MyWay==Way.Out) ? (Twin.Position) : (building.Position));
+                            TeleportItem(cur, destination, prcDebug);
+                            
                         }
                     break;
                 case Way.Swap:
@@ -1361,6 +1379,7 @@ namespace LTF_Teleport
             buildingName = building?.LabelShort;
             RequiresPower = Props.PowerRequired;
             RequiresBench = Props.BenchRequired;
+            MyMap = building?.Map;
 
             if (RequiresPower)
             {
