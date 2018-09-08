@@ -58,9 +58,15 @@ namespace LTF_Teleport
             Tools.Warn("Trying to register: " + tpSpot2.Label + " in " + tpSpot1.Label, spot1Comp.prcDebug);
 
             // tp spot without powered facility
-            if ((spot1Comp.RequiresPower) && (!spot1Comp.HasPoweredFacility))
+            if ((spot1Comp.requiresPower) && (!spot1Comp.HasPoweredFacility))
             {
                 Messages.Message(tpSpot1.Label + " requires a powered facility to be linked", this.parent, MessageTypeDefOf.TaskCompletion);
+                return;
+            }
+
+            if (tpSpot1.Position.DistanceTo(tpSpot2.Position) > ToolsBuilding.TheoricBestRange(spot1Comp, spot2Comp))
+            {
+                Messages.Message(tpSpot2.Label + " is out of "+tpSpot1.Label+" range ("+spot1Comp.range+")", this.parent, MessageTypeDefOf.TaskCompletion);
                 return;
             }
 

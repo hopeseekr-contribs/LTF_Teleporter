@@ -39,7 +39,8 @@ namespace LTF_Teleport
         private float workGoal = defaultWorkAmount;
         private float workProgress = 0;
         // reach spots
-        float FacilityRange = 40f;
+        public float range = 0f;
+        public float moreRange = 0f;
         private bool mindcontrolEnabled = false;
         //bool mindReachable = false;
 
@@ -120,7 +121,7 @@ namespace LTF_Teleport
             compPower = building?.TryGetComp<CompPowerTrader>();
             compQuality = building?.TryGetComp<CompQuality>();
             compFacility = building?.TryGetComp<CompFacility>();
-            FacilityRange = compFacility?.Props.maxDistance ?? 0f;
+            range = compFacility?.Props.maxDistance ?? 0f;
 
             WeightFacilityCapacity(compQuality);
         }
@@ -132,6 +133,11 @@ namespace LTF_Teleport
             this.ResetCurrentTarget();
         }
         */
+        private void SetMoreRange(CompQuality comp = null)
+        {
+            if (comp == null) if ((comp = compQuality) == null) return;
+            moreRange = ToolsQuality.FactorCapacity(Props.moreRangeBase, Props.moreRange, comp, false, false, false, prcDebug);
+        }
 
         public override void PostExposeData()
         {
@@ -250,7 +256,7 @@ namespace LTF_Teleport
         private void WeightFacilityCapacity(CompQuality comp, bool debug=false)
         {
             Tools.Warn(">Settin Quality>" + Props.FacilityCapacityBase + ';' + Props.FacilityCapacitySpectrum + ">FacilityCapacity>" + FacilityCapacity, debug);
-            FacilityCapacity = (int)Tools.WeightedCapacity(Props.FacilityCapacityBase, Props.FacilityCapacitySpectrum, comp);
+            FacilityCapacity = (int)ToolsQuality.WeightedCapacity(Props.FacilityCapacityBase, Props.FacilityCapacitySpectrum, comp);
         }
 
         private void NextIndex()
@@ -295,6 +301,8 @@ namespace LTF_Teleport
             string Answer = string.Empty;
             //Tools.WeightedCapacity(Props.facilityCapacityBase, Props.facilityCapacitySpectrum, compQuality);
             Answer = "Registry capacity: " + FacilityCapacity;
+            Answer += "Range: " + range;
+            Answer += "Assist range: " + moreRange;
 
             return Answer;
         }
@@ -311,7 +319,7 @@ namespace LTF_Teleport
         bool InRangeSpot(Building spot)
         {
             bool Answer = false;
-            if (Bench2SpotDistance(spot) < FacilityRange)
+            if (Bench2SpotDistance(spot) < range)
                 return true;
 
             return Answer;
@@ -320,7 +328,8 @@ namespace LTF_Teleport
         {
             base.CompTick();
 
-            Tools.Warn(" >>>TICK begin<<< ", prcDebug);
+            //Tools.Warn(" >>>TICK begin<<< ", prcDebug);
+            Tools.Warn(" >>>TICK begin tp:"+ Registry.Count + "<<< ");
             if (HasSpot)
             {
                 if (Tools.TwoTicksOneTrue())
@@ -341,7 +350,8 @@ namespace LTF_Teleport
             }
 
 
-            Tools.Warn(" >>>TICK end<<< ", prcDebug);
+            // Tools.Warn(" >>>TICK end<<< ", prcDebug);
+            Tools.Warn(" >>>TICK end "+ Registry.Count + "<<< ");
         }
 
         [DebuggerHidden]
@@ -551,9 +561,9 @@ namespace LTF_Teleport
             {
                 GenDraw.DrawLineBetween(this.parent.TrueCenter(), CurrentSpot.TrueCenter(), SimpleColor.Cyan);
             }
-            if (FacilityRange >0f)
+            if (range >0f)
             {
-                GenDraw.DrawRadiusRing(this.parent.Position, FacilityRange/2);
+                GenDraw.DrawRadiusRing(this.parent.Position, range/2);
             }
         }
     }

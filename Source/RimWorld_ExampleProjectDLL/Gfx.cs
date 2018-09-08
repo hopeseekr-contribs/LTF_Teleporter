@@ -35,10 +35,10 @@ namespace LTF_Teleport
 
         public enum AnimStep
         {
-            na,
-            begin,
-            active,
-            end,
+            na      = 0,
+            begin   = 1,
+            active  = 2,
+            end     = 3,
         };
 
         public enum Layer 

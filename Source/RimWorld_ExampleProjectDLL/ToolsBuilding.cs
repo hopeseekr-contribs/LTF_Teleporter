@@ -75,6 +75,12 @@ namespace LTF_Teleport
         }
         public static Building GetFacility(CompAffectedByFacilities buildingFacilityComp, bool debug=false)
         {
+            if(buildingFacilityComp == null)
+            {
+                Tools.Warn("//no comp", debug);
+                return null;
+            }
+
             //Building.CompFacility legit
             if (buildingFacilityComp.LinkedFacilitiesListForReading.NullOrEmpty())
             {
@@ -96,6 +102,9 @@ namespace LTF_Teleport
             return newFacility;
         }
 
-        
+        public static float TheoricBestRange(Comp_LTF_TpSpot comp1, Comp_LTF_TpSpot comp2)
+        {
+            return (Mathf.Max(comp1?.range ?? 0, comp2?.range ?? 0));
+        }
     }
 }

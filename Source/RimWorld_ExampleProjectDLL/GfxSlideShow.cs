@@ -95,7 +95,7 @@ namespace LTF_Teleport
                         comp.NextAnim();
 
                     if (comp.TpOutNa)
-                        comp.SlideShowOn = false;
+                        comp.slideShowOn = false;
                     return;
                 }
 

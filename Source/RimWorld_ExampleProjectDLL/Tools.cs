@@ -64,19 +64,6 @@ namespace LTF_Teleport
             }
         }
 
-        // Max capacity quality weighted Init
-        public static float WeightedCapacity(float capacityBase, float capacitySpectrum, CompQuality comp = null, bool debug = false)
-        {
-            if (comp == null)
-            {
-                if (debug)
-                    Log.Warning("no qualit comp found");
-                return (capacityBase);
-            }
-            // 0..8
-            return (capacityBase + (float)comp.Quality * (capacitySpectrum / 8));
-        }
-
         public static float LimitToRange(float val, float min, float max)
         {
             if (val < min) return min;
@@ -88,6 +75,11 @@ namespace LTF_Teleport
             if (val < min) return min;
             if (val > max) return max;
             return val;
+        }
+        public static float LimitRadius(float value)
+        {
+            //"Not enough squares to get to radius 64.72919.Max is 56.40036"
+            return LimitToRange(value, 0, 55);
         }
         public static int NextIndexRoundBrowser(int index, int count)
         {

@@ -22,15 +22,20 @@
 		<MaxHitPoints>20</MaxHitPoints>
 		<Flammability>1.5</Flammability>
 		<MarketValue>100</MarketValue>
-		<EntertainmentStrengthFactor>1</EntertainmentStrengthFactor>
+		<JoyGainFactor>1</JoyGainFactor>
+		<Mass>10</Mass>
 	</statBases>
 	
 	<resourcesFractionWhenDeconstructed>.2</resourcesFractionWhenDeconstructed>
 	<tradeTags>
 		<li>Furniture</li>
     </tradeTags>
-	<minifiedDef>MinifiedFurniture</minifiedDef>
+	<minifiedDef>MinifiedThing</minifiedDef>
 	<tickerType>Normal</tickerType>
+	
+	<thingCategories>
+		<li>BuildingsMisc</li>
+	</thingCategories>
 	
 	<scatterableOnMapGen>false</scatterableOnMapGen>
 	<useHitPoints>True</useHitPoints>
@@ -96,10 +101,31 @@
 		<li><compClass>CompQuality</compClass></li>
 	
 		<li Class="LTF_Teleport.CompProperties_LTF_TpSpot">
-			<weightBase>20</weightBase>
-			<weightSpectrum>80</weightSpectrum>
-			<cooldownBase>7200</cooldownBase>
-			<cooldownSpectrum>-3600</cooldownSpectrum>
+			<weightBase>25</weightBase>
+			<weightQualityFactor>10</weightQualityFactor>
+
+			<rangeBase>1.35</rangeBase>
+			<rangeQualityFactor>5</rangeQualityFactor>
+
+			<warmUpBase>420</warmUpBase>
+			<warmUpQualityFactor>-21</warmUpQualityFactor>
+			
+			<cooldownBase>1800</cooldownBase>
+			<cooldownQualityFactor>-90</cooldownQualityFactor>
+			
+			<missRangeBase>9</missRangeBase>
+			<missRangeQualityFactor>-.7</missRangeQualityFactor>
+			<missChanceBase>1.25</missChanceBase>
+			<missChanceQualityFactor>.4</missChanceQualityFactor>
+			
+			<fumbleRangeBase>3</fumbleRangeBase>
+			<fumbleRangeQualityFactor>.4</fumbleRangeQualityFactor>
+			<fumbleChangeBase>10</fumbleChangeBase>
+			<fumbleChanceQualityFactor>.25</fumbleChanceQualityFactor>
+			
+			<benchSynergyBase>.95</benchSynergyBase>
+			<benchSynergyQualityFactor>.02</benchSynergyQualityFactor>
+			
 			<PowerRequired>false</PowerRequired>
 			<BenchRequired>false</BenchRequired>
 		</li>

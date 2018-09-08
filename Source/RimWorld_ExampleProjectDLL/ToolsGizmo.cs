@@ -29,11 +29,11 @@ namespace LTF_Teleport
             switch ((int)qualityComp.Quality)
             {
                 case (int)QualityCategory.Awful:
-                case (int)QualityCategory.Superior:
+                //case (int)QualityCategory.Superior:
                 case (int)QualityCategory.Legendary:
                     Answer = 1f;
                     break;
-                case (int)QualityCategory.Shoddy:
+                //case (int)QualityCategory.Shoddy:
                 case (int)QualityCategory.Good:
                 case (int)QualityCategory.Masterwork:
                     Answer = .9f;
@@ -54,12 +54,12 @@ namespace LTF_Teleport
             {
                 case (int)QualityCategory.Awful:
                 case (int)QualityCategory.Poor:
-                case (int)QualityCategory.Shoddy:
+                //case (int)QualityCategory.Shoddy:
                     Answer = MyGizmo.QualityBadGz;
                     break;
                 case (int)QualityCategory.Normal:
                 case (int)QualityCategory.Good:
-                case (int)QualityCategory.Superior:
+                //case (int)QualityCategory.Superior:
                     Answer = MyGizmo.QualityNormalGz;
                     break;
                 case (int)QualityCategory.Excellent:

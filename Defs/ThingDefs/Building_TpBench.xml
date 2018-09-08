@@ -24,9 +24,12 @@
 		<castEdgeShadows>true</castEdgeShadows>
 		<fillPercent>0.8</fillPercent>
 		<canOverlapZones>false</canOverlapZones>
-		<minifiedDef>MinifiedFurniture</minifiedDef>
+		<minifiedDef>MinifiedThing</minifiedDef>
 		<surfaceType>Item</surfaceType>
-
+		<thingCategories>
+			<li>BuildingsMisc</li>
+		</thingCategories>
+		
 		<resourcesFractionWhenDeconstructed>.3</resourcesFractionWhenDeconstructed>
 		
 		<statBases>
@@ -34,14 +37,14 @@
 			<WorkToBuild>15000</WorkToBuild>
 			<MaxHitPoints>250</MaxHitPoints>
 			<Flammability>1.0</Flammability>
+			<Mass>150</Mass>
 		</statBases>
 		
 		<tickerType>Normal</tickerType>
 
 		<description>A power consumptive workstation.
 - Requires at least 1 teleport spot.
-State your orders and schedule strategic wanderings.
-</description>
+State your orders and schedule strategic wanderings.</description>
 		<size>(3,1)</size>
 		<designationCategory>Security</designationCategory>
 		<hasInteractionCell>true</hasInteractionCell>
@@ -59,7 +62,7 @@ State your orders and schedule strategic wanderings.
 		<costList>
 			<Steel>50</Steel>
 			<Uranium>20</Uranium>
-			<Component>5</Component>
+			<ComponentIndustrial>5</ComponentIndustrial>
 		</costList>
 		
 		<comps>
@@ -71,7 +74,7 @@ State your orders and schedule strategic wanderings.
 			<li Class="CompProperties_Power">
 				<compClass>CompPowerTrader</compClass>
 				<basePowerConsumption>250</basePowerConsumption>
-				<startElectricalFires>true</startElectricalFires>
+				<!-- <startElectricalFires>true</startElectricalFires> -->
 			</li>
 			<li Class="CompProperties_Flickable"/>
 			<li><compClass>CompQuality</compClass></li>
@@ -93,6 +96,8 @@ State your orders and schedule strategic wanderings.
 			<li Class="LTF_Teleport.CompProperties_TpBench">
 				<FacilityCapacitySpectrum>1</FacilityCapacitySpectrum>
 				<FacilityCapacityBase>12</FacilityCapacityBase>
+				<moreRange>1</moreRange>
+				<moreRangeBase>12</moreRangeBase>
 			</li>
 			
 		</comps>

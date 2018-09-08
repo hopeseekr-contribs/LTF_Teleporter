@@ -15,6 +15,9 @@ namespace LTF_Teleport
         public float FacilityCapacitySpectrum = 16f;
         public float FacilityCapacityBase = 1f;
 
+        public float moreRange = .6f;
+        public float moreRangeBase = 1f;
+
         public CompProperties_TpBench()
 		{
 			this.compClass = typeof(Comp_TpBench);

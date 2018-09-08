@@ -22,15 +22,20 @@ Requires a teleport bench.</description>
 		<MaxHitPoints>100</MaxHitPoints>
 		<Flammability>1.0</Flammability>
 		<MarketValue>1200</MarketValue>
-		<EntertainmentStrengthFactor>1</EntertainmentStrengthFactor>
+		<JoyGainFactor>1</JoyGainFactor>
+		<Mass>30</Mass>
 	</statBases>
 	
 	<resourcesFractionWhenDeconstructed>.3</resourcesFractionWhenDeconstructed>
 	<tradeTags>
 		<li>Furniture</li>
     </tradeTags>
-	<minifiedDef>MinifiedFurniture</minifiedDef>
+	<minifiedDef>MinifiedThing</minifiedDef>
 	<tickerType>Normal</tickerType>
+	
+	<thingCategories>
+		<li>BuildingsMisc</li>
+	</thingCategories>
 	
 	<scatterableOnMapGen>false</scatterableOnMapGen>
 	<useHitPoints>True</useHitPoints>
@@ -78,7 +83,7 @@ Requires a teleport bench.</description>
 		<costList>
 			<Steel>20</Steel>
 			<Uranium>5</Uranium>
-			<Component>1</Component>
+			<ComponentIndustrial>1</ComponentIndustrial>
 		</costList>
 
     <comps>
@@ -94,7 +99,7 @@ Requires a teleport bench.</description>
 		<li Class="CompProperties_Power">
 			<compClass>CompPowerTrader</compClass>
 			<basePowerConsumption>120</basePowerConsumption>
-			<startElectricalFires>true</startElectricalFires>
+			<!-- <startElectricalFires>true</startElectricalFires> -->
 		</li>
 	
 		<li Class="CompProperties_Flickable"/>
@@ -108,10 +113,30 @@ Requires a teleport bench.</description>
 		</li>
     
 		<li Class="LTF_Teleport.CompProperties_LTF_TpSpot">
-			<weightBase>50</weightBase>
-			<weightSpectrum>160</weightSpectrum>
-			<cooldownBase>3600</cooldownBase>
-			<cooldownSpectrum>-2400</cooldownSpectrum>
+			<weightBase>35</weightBase>
+			<weightQualityFactor>20</weightQualityFactor>
+
+			<rangeBase>10</rangeBase>
+			<rangeQualityFactor>1.2</rangeQualityFactor>
+
+			<warmUpBase>300</warmUpBase>
+			<warmUpQualityFactor>-33</warmUpQualityFactor>
+			
+			<cooldownBase>1200</cooldownBase>
+			<cooldownQualityFactor>-120</cooldownQualityFactor>
+			
+			<missRangeBase>10</missRangeBase>
+			<missRangeQualityFactor>-1</missRangeQualityFactor>
+			<missChanceBase>2</missChanceBase>
+			<missChanceQualityFactor>.5</missChanceQualityFactor>
+			
+			<fumbleRangeBase>1</fumbleRangeBase>
+			<fumbleRangeQualityFactor>1.5</fumbleRangeQualityFactor>
+			<fumbleChangeBase>15</fumbleChangeBase>
+			<fumbleChanceQualityFactor>.25</fumbleChanceQualityFactor>
+        
+			<benchSynergyBase>.85</benchSynergyBase>
+			<benchSynergyQualityFactor>.08</benchSynergyQualityFactor>
 			<!--
 			<PowerRequired>true</PowerRequired>
 			<BenchRequired>true</BenchRequired>

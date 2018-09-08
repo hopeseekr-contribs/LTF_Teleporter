@@ -41,8 +41,26 @@ namespace LTF_Teleport
         public static string VirtualQuality(CompQuality comp, int relativeChange = 0)
         {
             string answer = "no quality comp";
-            if (comp != null)
-                answer = comp.Quality.AddLevels(relativeChange).GetLabelShort();
+
+            if (comp == null)
+                return answer;
+
+            QualityCategory qualityCategory = QualityCategory.Normal;
+            answer = comp.Quality.ToString();
+
+            if (relativeChange > 0)
+            {
+                if (comp.Quality != QualityCategory.Legendary)
+                    qualityCategory = comp.Quality + 1;
+            }
+            else
+            {
+                if (comp.Quality != QualityCategory.Awful)
+                    qualityCategory = comp.Quality - 1;
+            }
+            //answer = comp.Quality.AddLevels(relativeChange).GetLabelShort();
+
+            answer = qualityCategory.ToString();
 
             return (answer);
         }
@@ -61,12 +79,13 @@ namespace LTF_Teleport
 
             if (better)
             {
-                comp?.SetQuality(myQuality.AddLevels(1), ArtGenerationContext.Colony);
-
+                if (myQuality != QualityCategory.Legendary)
+                    myQuality = myQuality + 1;
             }
             else
             {
-                comp.SetQuality(myQuality.AddLevels(-1), ArtGenerationContext.Colony);
+                if (myQuality != QualityCategory.Awful)
+                    myQuality = myQuality - 1;
             }
 
             return (remember != myQuality);
@@ -100,6 +119,63 @@ namespace LTF_Teleport
             }
             return Value;
         }
+
+        // Max capacity quality weighted Init
+        public static float WeightedCapacity(float capacityBase, float capacitySpectrum, CompQuality comp = null, bool debug = false)
+        {
+            if (comp == null)
+            {
+                if (debug)
+                    Log.Warning("no qualit comp found");
+                return (capacityBase);
+            }
+            // 0..8
+            return (capacityBase + (float)comp.Quality * (capacitySpectrum / 8));
+        }
+
+        public static float FactorCapacity(float capacityBase, float factor, CompQuality comp = null, bool pow2 = false, bool round = false, bool opposite=false, bool debug = false)
+        {
+            if (comp == null)
+            {
+                Tools.Warn("no qualit comp found", debug);
+                return (capacityBase);
+            }
+            if(opposite && round){
+                Tools.Warn("chance with roundup", debug);
+                return (capacityBase);
+            }
+
+            float answer = capacityBase;
+            float quality = (float)comp.Quality;
+
+            if (pow2)
+            {
+                //=1/PUISSANCE(2;(A7+$D$15)*$D$14)
+                answer = Mathf.Pow(2, (quality + capacityBase) * factor);
+            }
+            else
+            {
+                //=ARRONDI.SUP($C$15+$C$14*A4)
+                answer = (capacityBase + factor * quality);
+            }
+
+            if (opposite)
+            {
+                if (answer == 0)
+                {
+                    Tools.Warn("0 div", debug);
+                    return (capacityBase);
+                }
+                answer = 1 / answer;
+            }
+            if (round)
+            {
+                answer = Mathf.RoundToInt(answer);
+            }
+
+            return (answer);
+        }
+
     }
 
 }

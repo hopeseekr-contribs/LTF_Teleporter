@@ -36,13 +36,13 @@
     <size>(1,1)</size>
     <costList>
       <Steel>70</Steel>
-      <Component>2</Component>
+      <ComponentIndustrial>2</ComponentIndustrial>
     </costList>
     <comps>
       <li Class="CompProperties_Battery">
         <storedEnergyMax>1000</storedEnergyMax>
         <efficiency>0.5</efficiency>
-        <startElectricalFires>true</startElectricalFires>
+        <!-- <startElectricalFires>true</startElectricalFires> -->
         <transmitsPower>true</transmitsPower>
       </li>
       <li Class="CompProperties_Breakdownable"/>
@@ -87,7 +87,7 @@
     <size>(4,4)</size>
     <costList>
       <Steel>100</Steel>
-      <Component>3</Component>
+      <ComponentIndustrial>3</ComponentIndustrial>
     </costList>
     <comps>
       <li Class="CompProperties_Power">
@@ -141,7 +141,7 @@
     <size>(6,6)</size>
     <costList>
       <Steel>400</Steel>
-      <Component>8</Component>
+      <ComponentIndustrial>8</ComponentIndustrial>
     </costList>
     <comps>
       <li Class="CompProperties_Power">

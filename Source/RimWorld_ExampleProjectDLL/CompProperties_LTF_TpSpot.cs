@@ -12,24 +12,36 @@ namespace LTF_Teleport
 {
 	public class CompProperties_LTF_TpSpot : CompProperties
 	{
-        // Capacity = weight that can be Tped // TpCapa
         // Telefrag and tp back also rely on Tpable weight 
-        //public float WeightedCapacityBase;// = 50f;
-        //public float WeightSpectrum;// = 160f; 20 / level
-        // max = 210
+        public float weightBase = 35f;
+        public float weightQualityFactor = 20f;
 
-        public float weightBase = 50f;
-        public float weightSpectrum = 160f;
+        public float rangeBase = 10f;
+        public float rangeQualityFactor = 1.2f;
 
+        public int warmUpBase = 5 * 60;
+        public int warmUpQualityFactor = (int)(-.55f * 60);
+
+        public int cooldownBase = 20 * 60;
+        public int cooldownQualityFactor = -2 * 60;
+
+        public float missRangeBase = 10;
+        public float missRangeQualityFactor = -1;
+        public float missChanceBase = 2;
+        public float missChanceQualityFactor = .5f;
+
+        public float fumbleRangeBase = 1;
+        public float fumbleRangeQualityFactor = 1.5f;
+        public float fumbleChangeBase = 15;
+        public float fumbleChanceQualityFactor = .25f;
+
+        public float benchSynergyBase = .85f;
+        public float benchSynergyQualityFactor = .08f;
+
+        // Electricity consumption ?
         public bool PowerRequired = true;
         public bool BenchRequired = true;
-        // 60 sec base cooldown
-        // Best = 20 min
-        // 8*5 ; -5 sec / quality
-        public float cooldownBase = 60*60f;
-        public float cooldownSpectrum = -40*60f;
-
-        // Electricity consuption ?
+        
 
         public CompProperties_LTF_TpSpot()
 		{
