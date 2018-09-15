@@ -16,53 +16,6 @@ namespace LTF_Teleport
     public class Dependencies
     {
         
-        //Facility required
-        /*
-        public static Building GetPoweredFacility(Building building, Building facility, CompAffectedByFacilities buildingFacilityComp= null, CompPowerTrader facilityPowerComp = null, bool debug = false)
-        {
-            Building Answer = null;
-
-            //Building - needed to find other things
-            if (!ToolsBuilding.CheckBuilding(building))
-            {
-                Tools.Warn("bad building, wont check facility", debug);
-                return null;
-            }
-
-            if(buildingFacilityComp == null)
-                buildingFacilityComp = ToolsBuilding.GetAffectedComp(building, debug);
-
-            if (facility == null)
-                ToolsBuilding.GetFacility(buildingFacilityComp, debug);
-
-            if (!ToolsBuilding.CheckBuilding((facility))
-            {
-                Tools.Warn(" give facility is not ok, getting one", debug);
-
-                Building newFacility = thing as Building;
-                return null;
-            }
-
-
-
-            if (facilityPowerComp != null)
-            {
-
-            }
-            else
-            {
-                if (!CheckPower(facility))
-                {
-                    if (debug)
-                        Log.Warning("facility has no power");
-                }
-            }
-            
-
-            Answer = facility;
-            return Answer;
-        }
-        */
         public static bool TickCheckFacilityPower(Building facility, CompPowerTrader powerComp = null, bool debug = false)
         {
             bool Answer = true;

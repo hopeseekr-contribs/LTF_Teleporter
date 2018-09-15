@@ -73,7 +73,7 @@ namespace LTF_Teleport
                     return;
                 }
 
-                if (thing.def.defName != "LTF_TpSpot")
+                if (thing.def.defName != "LTF_TpSpot" && thing.def.defName != "LTF_TpCatcher")
                 {
                     Tools.Warn("slide show for tp spot only", true);
                     return;
@@ -90,11 +90,12 @@ namespace LTF_Teleport
                 if (frameI >= frameMax)
                 {
                     Unset();
-                    if ((comp.TpOutActive) || (comp.TpOutEnd))
-                        //if ((tpSpot.TpOutBegin) || (tpSpot.TpOutActive))
+                    if ((comp.TeleportItemAnimActive) || (comp.TpSequenceEnd))
+                        //if ((comp.TeleportItemAnimActive) || (comp.TeleportItemAnimEnd))
+                        //if ((tpSpot.TeleportItemAnimBegin) || (tpSpot.TeleportItemAnimActive))
                         comp.NextAnim();
 
-                    if (comp.TpOutNa)
+                    if (comp.TeleportItemAnimNa)
                         comp.slideShowOn = false;
                     return;
                 }

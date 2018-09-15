@@ -39,7 +39,7 @@ namespace LTF_Teleport
         public bool requiresBench = true;
 
         // Production 
-        List<Thing> thingList = new List<Thing>();
+        public List<Thing> thingList = new List<Thing>();
         public Building facility = null;
         Pawn standingUser = null;
         bool benchManaged = false;
@@ -50,7 +50,7 @@ namespace LTF_Teleport
         public Building twin = null;
         public ToolsBuilding.Link MyLink = ToolsBuilding.Link.Orphan;
 
-        bool Auto = false;
+        bool AutomaticTeleportation = false;
         public Way MyWay = Way.No;
 
         //calculated
@@ -74,8 +74,11 @@ namespace LTF_Teleport
 
         //weighted caracteristics weighted
         public float range = 0f;
-        public int warmUp = 0;
+
+        public int warmUpCalculated = 0;
+        public int warmUpLeft = 0;
         public int warmUpBase = 0;
+
         private int startFrame = 0;
         public float benchSynergy = 1;
 
@@ -138,15 +141,15 @@ namespace LTF_Teleport
             capable = 64,
         }
 
-        public Gfx.AnimStep TpOutStatus = Gfx.AnimStep.na;
-        public Gfx.AnimStep TpInStatus = Gfx.AnimStep.na;
+        public Gfx.AnimStep TeleportItemAnimStatus = Gfx.AnimStep.na;
+        //public Gfx.AnimStep TpInStatus = Gfx.AnimStep.na;
         int BeginSequenceFrameLength = 120;
         int beginSequenceI = 0;
         int FrameSlowerMax = 3;
         int FrameSlower = 0;
         public bool drawUnderlay = true;
         public bool drawOverlay = true;
-        float myOpacity = 1f;
+        private float myOpacity = 1f;
 
         // Debug 
         public bool gfxDebug = false;
@@ -167,14 +170,6 @@ namespace LTF_Teleport
         {
             ToolsQuality.ChangeQuality(building, compQuality, better);
             SetWeightedProperties();
-        }
-
-        public bool HasOrder
-        {
-            get
-            {
-                return teleportOrder;
-            }
         }
         public bool HasQuality
         {
@@ -222,7 +217,7 @@ namespace LTF_Teleport
 
         public void AutoToggle()
         {
-            Auto = !Auto;
+            AutomaticTeleportation = !AutomaticTeleportation;
         }
         public Way NextWay
         {
@@ -237,8 +232,6 @@ namespace LTF_Teleport
 
                 if ((int)Answer > (int)Way.Swap)
                     Answer = Way.No;
-
-                //if ((!IsLinked) && (Answer == Way.Swap))Answer = Way.No;
 
                 return Answer;
             }
@@ -265,6 +258,7 @@ namespace LTF_Teleport
                 return ((cast >= min) && (cast <= max));
             }
         }
+
         public Texture2D IssueGizmoing
         {
             get
@@ -297,6 +291,7 @@ namespace LTF_Teleport
                 return (WayGizmo[(int)MyWay]);
             }
         }
+
         public string WayNaming
         {
             get
@@ -337,14 +332,11 @@ namespace LTF_Teleport
                 return (AutoLabel[(int)MyWay]);
             }
         }
+
         public ToolsBuilding.Link NextLink
         {
             get
             {
-                //Answer = ToolsBuilding.Link.Orphan;
-                //Answer = ((MyLink ==ToolsBuilding.Link.Linked) ? (ToolsBuilding.Link.Orphan) : (MyLink.Next()));
-                //if ((int)Answer > (int)ToolsBuilding.Link.Linked)
-                //    Answer = ToolsBuilding.Link.Orphan;
                 ToolsBuilding.Link Answer = (MyLink == ToolsBuilding.Link.Linked) ? (ToolsBuilding.Link.Orphan) : (ToolsBuilding.Link.Linked);
                 return Answer;
             }
@@ -435,11 +427,13 @@ namespace LTF_Teleport
 
             // warmUpBase = (int)ToolsQuality.FactorCapacity(Props.warmUpBase, Props.warmUpQualityFactor, comp, false, false, false, prcDebug);
             BeginSequenceFrameLength = (int)ToolsQuality.FactorCapacity(Props.warmUpBase, Props.warmUpQualityFactor, comp, false, false, false, prcDebug);
+
             warmUpBase = BeginSequenceFrameLength + 2 * 23 * FrameSlowerMax;
             startFrame = 23 * FrameSlowerMax;
             //(int)1.5f * FrameSlowerMax * 23
 
-            warmUp = Mathf.Min(warmUpBase, warmUp);
+            warmUpCalculated = Mathf.Min(warmUpBase, warmUpCalculated);
+            warmUpLeft = warmUpCalculated;
         }
         private void SetCooldownBase(CompQuality comp = null)
         {
@@ -479,10 +473,23 @@ namespace LTF_Teleport
             fumbleRange = ToolsQuality.FactorCapacity(Props.fumbleRangeBase, Props.fumbleRangeQualityFactor, comp, false, true, false, prcDebug);
         }
 
+        public void ResetOrder()
+        {
+            teleportOrder = false;
+
+            if(source)
+                TeleportItemAnimStatus = Gfx.AnimStep.na;
+            if(destination)
+                compTwin.TeleportItemAnimStatus = Gfx.AnimStep.na;
+
+            destination = false;
+            source = false;
+        }
+
         private void ResetSettings()
         {
             MyWay = Way.No;
-            Auto = false;
+            AutomaticTeleportation = false;
 
             // TRying to remove spot from workstation it's registered
             if (requiresBench && HasRegisteredFacility && ToolsBuilding.CheckBuilding(building))
@@ -505,14 +512,14 @@ namespace LTF_Teleport
         {
             get
             {
-                return(warmUp > 0);
+                return(warmUpLeft > 0);
             }
         }
         public bool WarmUpJustStarted
         {
             get
             {
-                return ((teleportOrder) && (warmUpBase == warmUp));
+                return ((teleportOrder) && (warmUpCalculated == warmUpLeft));
             }
         }
         public float WarmUpProgress
@@ -523,17 +530,19 @@ namespace LTF_Teleport
                     Tools.Warn("Unset warmUpBase", prcDebug);
                     return 0;
                 }
-                    
-                return (warmUp/warmUpBase);
-            }
-        }
-        public void ResetOrder()
-        {
-            teleportOrder = false;
+                if (warmUpCalculated == 0)
+                {
+                    Tools.Warn("Unset warmUpCalculated", prcDebug);
+                    return 0;
+                }
+                if (warmUpLeft == 0)
+                {
+                    Tools.Warn("Unset warmUpLeft", prcDebug);
+                    return 1;
+                }
 
-            destination = false;
-            source = false;
-            TpOutStatus = Gfx.AnimStep.na;
+                return ((float)warmUpLeft / (float)warmUpCalculated);
+            }
         }
 
         private void UpdateDistance(bool debug=false)
@@ -546,7 +555,6 @@ namespace LTF_Teleport
             compTwin.twinDistance = twinDistance;
             Tools.Warn("updated distance:"+twinDistance, debug);
         }
-
         private void WorkstationOrder(bool debug = false)
         {
             if (!StatusNoIssue)
@@ -575,9 +583,9 @@ namespace LTF_Teleport
         // Gizmo command no debug pls
         public void OrderOut()
         {
-           
+            MyWay = Way.Out;
             WorkstationOrder(prcDebug);
-            BeginTpOutAnimSeq();
+            BeginTeleportItemAnimAnimSeq();
 
             source = true;
             destination = false;
@@ -585,22 +593,37 @@ namespace LTF_Teleport
             compTwin.source = false;
             compTwin.destination = true;
         }
+        /*
         public void OrderIn()
         {
             WorkstationOrder(prcDebug);
-            //BeginTpInAnimSeq();
-            compTwin.OrderOut();
-        }
-        public void OrderSwap()
-        {
-            WorkstationOrder(prcDebug);
+            compTwin.BeginTeleportItemAnimAnimSeq();
 
-            SetBeginAnimLength();
-            source = true;
-            destination = false;
+            source = false;
+            destination = true;
+
             compTwin.source = true;
             compTwin.destination = false;
         }
+        */
+        public void OrderSwap()
+        {
+            OrderOut();
+            compTwin.OrderOut();
+        }
+            /*
+            public void OrderSwap()
+            {
+                WorkstationOrder(prcDebug);
+
+                SetBeginAnimLength();
+                source = true;
+                destination = false;
+                compTwin.source = true;
+                compTwin.destination = false;
+            }
+            */
+
         public IntVec3 SomeJitter(IntVec3 destination, bool debug=false) {
             IntVec3 answer = destination;
             IntVec3 offset = new IntVec3(0, 0, 0);
@@ -621,7 +644,15 @@ namespace LTF_Teleport
 
         private void TeleportItem(Thing thing, IntVec3 destination, bool debug=false)
         {
-            if (thing == null) return;
+            if (thing == null)
+            {
+                Tools.Warn("!!! thing == null", debug);
+                return;
+            }
+            
+
+            if (thing.Position == destination)
+                Tools.Warn("!!! Trying to tp something where it already is", debug);
 
             if (thing is Pawn pawn)
             {
@@ -640,11 +671,11 @@ namespace LTF_Teleport
                 thing.Position = destination;
             }
         }
-
         private bool TryTeleport(bool debug = false)
         {
             bool gotSomeJitter = false;
 
+            //if (!StatusReady || !compTwin.StatusReady)
             if (!StatusReady)
             {
                 Tools.Warn("unready - wont tp", debug);
@@ -655,23 +686,72 @@ namespace LTF_Teleport
                 Tools.Warn("orphan - wont tp", debug);
                 return false;
             }
-            if (!HasItems)
-            {
-                Tools.Warn("no item - wont tp", debug);
-                return false;
-            }
+
+            if (MyWay == Way.Out)
+                if (!HasItems)
+                {
+                    Tools.Warn("WayOut no item - wont tp", debug);
+                    return false;
+                }
+
+            if (MyWay == Way.In)
+                if (!compTwin.HasItems)
+                {
+                    Tools.Warn("WayIn no item - wont tp", debug);
+                    return false;
+                }
+
+            Tools.Warn("MyWay => " + MyWay, debug);
 
             switch (MyWay)
             {
-                case Way.Out:
                 case Way.In:
                     {
-                        IntVec3 destination = ((MyWay == Way.Out) ? (twin.Position) : (building.Position));
+                        //IntVec3 destination = ((MyWay == Way.Out) ? (twin.Position) : (building.Position));
+                        IntVec3 destination = building.Position;
                         IntVec3 jittered = destination;
-                        foreach (Thing cur in thingList)
+
+                        //List<Thing> thingToTeleport = ((MyWay == Way.Out) ? (thingList) : (compTwin.thingList));
+                        List<Thing> thingToTeleport = compTwin.thingList;
+
+                        //public List<Thing> thingToTeleport =
+                        foreach (Thing cur in thingToTeleport)
                         {
+                            // If object is not on the twin spot, it has moved since recording
+                            if (cur.Position != twin.Position)
+                            {
+                                Tools.Warn(cur.Label + " has moved since record.", debug);
+                                continue;
+                            }
+
                             jittered = SomeJitter(destination);
-                            TeleportItem(cur, destination, prcDebug);
+                            // No jitter for now
+                            //TeleportItem(cur, jittered, prcDebug);
+
+                            TeleportItem(cur, destination, debug);
+
+                            if (jittered != destination)
+                                gotSomeJitter = true;
+                        }
+                        break;
+                    }
+                case Way.Out:
+                    {
+                        //IntVec3 destination = ((MyWay == Way.Out) ? (twin.Position) : (building.Position));
+                        IntVec3 destination = twin.Position;
+                        IntVec3 jittered = destination;
+
+                        //List<Thing> thingToTeleport = ((MyWay == Way.Out) ? (thingList) : (compTwin.thingList));
+                        List<Thing> thingToTeleport = thingList;
+
+                        //public List<Thing> thingToTeleport =
+                        foreach (Thing cur in thingToTeleport)
+                        {
+
+                            jittered = SomeJitter(destination);
+                            // No jitter for now
+                            //TeleportItem(cur, jittered, prcDebug);
+                            TeleportItem(cur, destination, debug);
 
                             if (jittered != destination)
                                 gotSomeJitter = true;
@@ -707,7 +787,7 @@ namespace LTF_Teleport
             }
 
             if (gotSomeJitter)
-                Messages.Message(buildingName+" got some jitter and missed its destination", this.parent, MessageTypeDefOf.TaskCompletion);
+                Messages.Message(buildingName + " got some jitter and missed its destination", this.parent, MessageTypeDefOf.TaskCompletion);
 
             return true;
         }
@@ -728,9 +808,17 @@ namespace LTF_Teleport
         {
             currentCooldown = cooldownBase * (.5f + .5f * (.3f * currentWeight / weightCapacity + .7f * orderRange / TwinBestRange));
         }
+        /*
         private void SetWarmUp()
         {
-            warmUp = (int) ( warmUpBase * (.5f + .5f*(.7f * currentWeight / weightCapacity + .3f * orderRange / TwinBestRange)));
+            warmUpCalculated = (int) ( warmUpBase * (.5f + .5f*(.7f * currentWeight / weightCapacity + .3f * orderRange / TwinBestRange)));
+            warmUpLeft = warmUpCalculated;
+        }
+        */
+        private void SetWarmUp()
+        {
+            warmUpCalculated = (int)(((float)warmUpBase + (float)compTwin.warmUpBase)/2f * (.5f + .5f * (.7f * currentWeight / weightCapacity + .3f * orderRange / TwinBestRange)));
+            warmUpLeft = warmUpCalculated;
         }
 
         //Dependency : facility
@@ -787,7 +875,6 @@ namespace LTF_Teleport
                 return answer;
             }
         }
-
 
         public float TwinBestRange
         {
@@ -859,7 +946,7 @@ namespace LTF_Teleport
             Tools.Warn(
                 "Inc "+
                 "Master - order:" + Tools.OkStr(teleportOrder) + "; link:"+ Tools.OkStr(IsLinked) +
-                "Slave - order:" + Tools.OkStr(newComp.HasOrder) + "; link:" + Tools.OkStr(newComp.IsLinked),
+                "Slave - order:" + Tools.OkStr(newComp.teleportOrder) + "; link:" + Tools.OkStr(newComp.IsLinked),
                 debug);
 
             UnlinkMe();
@@ -881,21 +968,12 @@ namespace LTF_Teleport
             Tools.Warn(
                 "Inc " +
                 "Master - order:" + Tools.OkStr(teleportOrder) + "; link:" + Tools.OkStr(IsLinked) +
-                "Slave - order:" + Tools.OkStr(newComp.HasOrder) + "; link:" + Tools.OkStr(newComp.IsLinked),
+                "Slave - order:" + Tools.OkStr(newComp.teleportOrder) + "; link:" + Tools.OkStr(newComp.IsLinked),
                 debug);
 
             //SoundDef.Named("LTF_TpSpotOut").PlayOneShotOnCamera(parent.Map);
 
             return true;
-        }
-
-        public static string ValidTpSpot(Thing thing)
-        {
-            string Answer = string.Empty;
-            if (thing.def.defName != "LTF_TpSpot" && thing.def.defName != "LTF_TpCatcher")
-                Answer = thing.Label + " is not a valid tp spot, it's a " + thing.def.label;
-
-            return Answer;
         }
 
         public string MyCoordinates {
@@ -907,12 +985,19 @@ namespace LTF_Teleport
             }
         }
 
+        public static string ValidTpSpot(Thing thing)
+        {
+            string Answer = string.Empty;
+            if (thing.def.defName != "LTF_TpSpot" && thing.def.defName != "LTF_TpCatcher")
+                Answer = thing.Label + " is not a valid tp spot, it's a " + thing.def.label;
+
+            return Answer;
+        }
 
         public void UnlinkMe()
         {
             Unlink(this);
         }
-
         public void Unlink(Comp_LTF_TpSpot caller)
         {
             if (IsLinked && this==caller)
@@ -1193,7 +1278,7 @@ namespace LTF_Teleport
         private void ChangeWeight(Thing thing, bool addWeight = true)
         {
             float newWeight = thing.GetStatValue(StatDefOf.Mass, true);
-            int plusOrMinus = ((addWeight) ? (1) : (-1));
+            float plusOrMinus = ((addWeight) ? (1) : (-1));
 
             currentWeight += plusOrMinus * newWeight;
 
@@ -1244,32 +1329,34 @@ namespace LTF_Teleport
             }
         }
 
-        public bool TpOutEnd
+        //public bool TeleportItemAnimEnd
+        public bool TpSequenceEnd
         {
             get
             {
-                return (TpOutStatus == Gfx.AnimStep.end);
+                return (TeleportItemAnimStatus == Gfx.AnimStep.end);
             }
         }
-        public bool TpOutBegin
+        //public bool TeleportItemAnimBegin
+        public bool TpSequenceBegin
         {
             get
             {
-                return (TpOutStatus == Gfx.AnimStep.begin);
+                return (TeleportItemAnimStatus == Gfx.AnimStep.begin);
             }
         }
-        public bool TpOutActive
+        public bool TeleportItemAnimActive
         {
             get
             {
-                return (TpOutStatus == Gfx.AnimStep.active);
+                return (TeleportItemAnimStatus == Gfx.AnimStep.active);
             }
         }
-        public bool TpOutNa
+        public bool TeleportItemAnimNa
         {
             get
             {
-                return (TpOutStatus == Gfx.AnimStep.na);
+                return (TeleportItemAnimStatus == Gfx.AnimStep.na);
             }
         }
         private void SetBeginAnimLength(bool TpIn=false)
@@ -1277,16 +1364,18 @@ namespace LTF_Teleport
             beginSequenceI = BeginSequenceFrameLength;
             //beginSequenceI                ((TpIn) ? (5) : (warmUpBase));
         }
-        public void BeginTpOutAnimSeq()
+        public void BeginTeleportItemAnimAnimSeq()
         {
-            TpOutStatus = Gfx.AnimStep.begin;
+            TeleportItemAnimStatus = Gfx.AnimStep.begin;
             SetBeginAnimLength();
         }
+        /*
         public void BeginTpInAnimSeq()
         {
-            TpOutStatus = Gfx.AnimStep.begin;
+            TeleportItemAnimStatus = Gfx.AnimStep.begin;
             SetBeginAnimLength(true);
         }
+        */
         public bool IncBeginAnim(bool debug = false)
         {
             beginSequenceI--;
@@ -1299,7 +1388,7 @@ namespace LTF_Teleport
         }
         public void AnimStatus(bool debug = false)
         {
-            Tools.Warn("AnimStatus - " + TpOutStatus + ": " + beginSequenceI + "/" + BeginSequenceFrameLength, debug);
+            Tools.Warn("AnimStatus - " + TeleportItemAnimStatus + ": " + beginSequenceI + "/" + BeginSequenceFrameLength, debug);
         }
         public float AnimOpacity
         {
@@ -1320,43 +1409,92 @@ namespace LTF_Teleport
             return FrameSlower;
         }
 
+        public bool SetSlideShowOn(bool debug = false)
+        {
+            if(compTwin == null)
+            {
+                Tools.Warn("//bad twin comp", true);
+                return false;
+            }
+
+            /*
+            if(source)
+                slideShowOn = true;
+
+            if (destination)
+                compTwin.slideShowOn = true;
+                */
+            slideShowOn = true;
+
+            return true;
+        }
+
+        public bool NextAnim(bool debug = false)
+        {
+            bool Answer = false;
+            if (compTwin == null)
+            {
+                Tools.Warn(buildingName + " //NextAnim bad twin comp", true);
+                return false;
+            }
+
+            switch (TeleportItemAnimStatus)
+            {
+                case Gfx.AnimStep.begin:
+                    TeleportItemAnimStatus = Gfx.AnimStep.active;
+                    break;
+                case Gfx.AnimStep.active:
+                    TeleportItemAnimStatus = Gfx.AnimStep.end;
+                    break;
+                case Gfx.AnimStep.end:
+                    TeleportItemAnimStatus = Gfx.AnimStep.na;
+                    Answer = true;
+                    break;
+            }
+
+            SetFrameSlower();
+
+            return Answer;
+        }
+
+        /*
         public bool NextAnim(bool debug=false)
         {
             bool Answer = false;
             if (compTwin == null)
             {
-                Tools.Warn("//bad twin comp", true);
+                Tools.Warn(buildingName + " //NextAnim bad twin comp", true);
                 return false;
             }
                 
             if (source)
-                switch (TpOutStatus)
+                switch (TeleportItemAnimStatus)
                 {
                     case Gfx.AnimStep.begin:
-                        TpOutStatus = Gfx.AnimStep.active;
+                        TeleportItemAnimStatus = Gfx.AnimStep.active;
                         //BeginSequenceFrameLength
                         break;
                     case Gfx.AnimStep.active:
-                        TpOutStatus = Gfx.AnimStep.end;
-                        compTwin.BeginTpInAnimSeq();
+                        TeleportItemAnimStatus = Gfx.AnimStep.end;
+                        //compTwin.BeginTpInAnimSeq();
                         break;
                     case Gfx.AnimStep.end:
-                        TpOutStatus = Gfx.AnimStep.na;
+                        TeleportItemAnimStatus = Gfx.AnimStep.na;
                         Answer = true;
                         break;
                 }
 
             if (destination)
-                switch (compTwin.TpInStatus)
+                switch (compTwin.TeleportItemAnimStatus)
                 {
                     case Gfx.AnimStep.begin:
-                        compTwin.TpInStatus = Gfx.AnimStep.active;
+                        compTwin.TeleportItemAnimStatus = Gfx.AnimStep.active;
                         break;
                     case Gfx.AnimStep.active:
-                        compTwin.TpInStatus = Gfx.AnimStep.end;
+                        compTwin.TeleportItemAnimStatus = Gfx.AnimStep.end;
                         break;
                     case Gfx.AnimStep.end:
-                        compTwin.TpInStatus = Gfx.AnimStep.na;
+                        compTwin.TeleportItemAnimStatus = Gfx.AnimStep.na;
                         Answer = true;
                         break;
                 }
@@ -1365,6 +1503,7 @@ namespace LTF_Teleport
 
             return Answer;
         }
+        */
 
         string DumpProps
         {
@@ -1376,7 +1515,10 @@ namespace LTF_Teleport
                     "; synergy:" + benchSynergy +
                     " - range:" + range +
                     "; cooldown:" + Tools.CapacityString(currentCooldown, cooldownBase) +
-                    "; warmup:" + Tools.CapacityString(warmUp, warmUpBase) +
+                    "; wuBase:" + warmUpBase +
+                    "; wuCal:" + warmUpCalculated +
+                    "; wuLeft:" + warmUpLeft +
+                    "; wuPrg:" + Tools.CapacityString(warmUpLeft, warmUpCalculated) +
                     "; weight:" + Tools.CapacityString(currentWeight, weightCapacity) +
                     "; miss:" + missChance + ";range:" + missRange +
                     "; fumble:" + fumbleChance + ";range:" + fumbleRange
@@ -1389,7 +1531,7 @@ namespace LTF_Teleport
             get
             {
                 return (
-                    "; way: "+MyWay+"; Link:"+IsLinked+"; Auto:" + Auto
+                    "; way: "+MyWay+"; Link:"+IsLinked+"; Auto:" + AutomaticTeleportation
                 );
             }
         }
@@ -1411,10 +1553,12 @@ namespace LTF_Teleport
             {
                 BuildingStatus Answer = BuildingStatus.na;
 
-                if (!ToolsBuilding.CheckPower(building))
+                //if (!ToolsBuilding.CheckPower(building))
+                if (requiresPower && (!ToolsBuilding.CheckPower(building)))
                     Answer ^= BuildingStatus.noPower;
 
-                if (!HasRegisteredFacility)
+                //if (!HasRegisteredFacility)
+                if (requiresBench && (!HasRegisteredFacility))
                     Answer ^= BuildingStatus.noFacility;
 
                 if (Tools.CapacityOverusing(currentWeight, weightCapacity))
@@ -1423,8 +1567,24 @@ namespace LTF_Teleport
                 if (Tools.CapacityUsing(currentCooldown))
                     Answer ^= BuildingStatus.cooldown;
 
-                if (HasNothing)
-                    Answer ^= BuildingStatus.noItem;
+                switch (MyWay)
+                {
+                    case Way.Out:
+                        if (HasNothing)
+                            Answer ^= BuildingStatus.noItem;
+                        break;
+                    case Way.In:
+                        break;
+                    case Way.Swap:
+                        if (HasNothing)
+                            Answer ^= BuildingStatus.noItem;
+                        break;
+                    default:
+                        if (HasNothing)
+                            Answer ^= BuildingStatus.noItem;
+                        break;
+                }
+                        
 
                 if (Answer == BuildingStatus.na)
                     Answer = BuildingStatus.capable;
@@ -1481,7 +1641,7 @@ namespace LTF_Teleport
 
                 
                 if (teleportOrder && HasWarmUp)
-                    bla += "\nWarm up: " + WarmUpProgress.ToStringPercent("F0") + "% (" + Tools.Ticks2Str(warmUpBase - warmUp) + " left)";
+                    bla += "\nWarm up: " + WarmUpProgress.ToStringPercent("F0") + " (" + Tools.Ticks2Str(warmUpLeft) + " left)";
 
                 return bla;
             }
@@ -1527,29 +1687,21 @@ namespace LTF_Teleport
                 return StatusLog(false);
             }
         }
-        /*
-        public bool IsCatcher
-        {
-            get
-            {
-                return (!requiresPower);
-            }
-        }
-        */
 
         // Overrides
         public override void PostDraw()
         {
             base.PostDraw();
 
-            if ((buildingPos == null) || (building.Rotation != Rot4.North))
+            //if ((buildingPos == null) || (building.Rotation != Rot4.North))
+            if (buildingPos == null)
             {
-                Tools.Warn("null pos draw", gfxDebug);
+                Tools.Warn(buildingName + ": null pos draw", gfxDebug);
                 return;
             }
 
             // nothing there standing
-            if (StatusNoPower && requiresPower)
+            if (requiresPower && StatusNoPower)
             {
                 Tools.Warn(buildingName + " Nothing to draw: " + TeleportCapable, gfxDebug);
                 return;
@@ -1570,7 +1722,7 @@ namespace LTF_Teleport
 
             // >>>> Calculate mat
             // calculate underlay
-            if (drawUnderlay && requiresPower)
+            if (requiresPower && drawUnderlay)
             {
                 if ((HasItems) || ((HasNothing) && (HasPoweredFacility)) || (StatusReady))
                     underlay = MyGfx.Status2UnderlayMaterial(this, gfxDebug);
@@ -1582,8 +1734,9 @@ namespace LTF_Teleport
             // calculate Overlay
             if (drawOverlay)
             {
-                //if( (!TpOutNa) && (TpOutBegin) )
-                if (TpOutBegin && teleportOrder && beginSequenceI>0)
+                //if( (!TeleportItemAnimNa) && (TeleportItemAnimBegin) )
+                //if (TpSequenceBegin) && teleportOrder && beginSequenceI>0)
+                if (TpSequenceBegin)
                     overlay = MyGfx.Status2OverlayMaterial(this, FactionMajority, gfxDebug);
 
                 if (requiresPower && !StatusReady && HasItems)
@@ -1629,10 +1782,12 @@ namespace LTF_Teleport
                 return;
             }
 
-            if (requiresPower && warning != null)
+            if (requiresPower && (warning != null))
                 Gfx.PulseWarning(building, warning);
 
-            if (teleportOrder && TpOutBegin && (overlay != null))
+            if (TpSequenceBegin && (overlay != null))
+            //if (TpSequenceBegin)
+            //if (teleportOrder && TpSequenceBegin && (overlay != null))
             {
                 float swirlSize = Gfx.VanillaPulse(parent) * 1.5f;
                 //Gfx.DrawTickRotating(parent, overlay, 0, 0, swirlSize, Gfx.LoopFactorOne(parent) * 360, 1, Gfx.Layer.over, gfxDebug);
@@ -1641,11 +1796,11 @@ namespace LTF_Teleport
             }
 
             if (slideShowOn)
-                if (TpOutActive)
+                if (TeleportItemAnimActive)
                 {
                     MyGfx.ActiveAnim.Draw(parent.DrawPos, Rot4.North, this.parent, 0.027f * Rand.Range(-1, 1) * 360);
                 }
-                else if (TpOutEnd)
+                else if (TpSequenceEnd)
                 {
                     Vector3 vec = parent.DrawPos;
                     vec.z += .3f;
@@ -1696,10 +1851,11 @@ namespace LTF_Teleport
         {
             base.CompTick();
 
-            Tools.Warn(" >>>TICK begin<<< ", prcDebug);
+            Tools.Warn(">>>TICK begin<<< " + buildingName, prcDebug);
 
             Tools.Warn("Validated order:" +
-            " warmUp: " + Tools.CapacityString(warmUp, warmUpBase) +
+            //" warmUp: " + Tools.CapacityString(warmUp, warmUpBase) +
+            " warmUp: " + WarmUpProgress.ToStringPercent("F0") +
             " begin seq: " + Tools.CapacityString(beginSequenceI, BeginSequenceFrameLength),
             prcDebug && teleportOrder);
 
@@ -1794,25 +1950,47 @@ namespace LTF_Teleport
             if (StatusReady)
             {
                 tellMe += "ready to tp " + "N:" + RegisteredCount + ":" + DumpList();
-                // Work here
-                //
             }
 
-            //(TpOutBegin) = hax
-            if (teleportOrder)
+            /* AUTO
+            if (AutomaticTeleportation && !teleportOrder)
             {
-                if (warmUp > 0)
+                switch (MyWay)
                 {
-                    warmUp--;
+                    case Way.Out:
+                        OrderOut();
+                        break;
+                    case Way.In:
+                        compTwin.OrderOut();
+                        //OrderIn();
+                        break;
+                    case Way.Swap:
+                        OrderOut();
+                        OrderIn();
+                        //compTwin.OrderOut();
 
-                    tellMe += Tools.CapacityString(warmUp, warmUpBase) + ":" + WarmUpProgress;
-                    myOpacity = ((TpOutActive) ? (.6f + .4f * Rand.Range(0, 1)) : (1));
+                        break;
+                    default:break;
+                }
+            }
+            */
 
-                    if (TpOutBegin && beginSequenceI>0)
+            if (teleportOrder)
+                {
+                if (warmUpLeft > 0)
+                {
+                    warmUpLeft--;
+
+                    tellMe += Tools.CapacityString(warmUpLeft, warmUpCalculated) + ":" + WarmUpProgress;
+                    myOpacity = ((TeleportItemAnimActive) ? (.6f + .4f * Rand.Range(0, 1)) : (1));
+
+                    //if (TeleportItemAnimBegin && beginSequenceI>0)
+                    //if (TpSequenceBegin && beginSequenceI > 0)
+                    if(beginSequenceI > 0)
                         if (IncBeginAnim(prcDebug))
                         {
                             NextAnim();
-                            slideShowOn = true;
+                            SetSlideShowOn();
                         }
 
                     //if (warmUp <= (int).5f * (FrameSlowerMax * 23))
@@ -1821,18 +1999,20 @@ namespace LTF_Teleport
                     BeginSequenceFrameLength = 240 / FacilityQuality + 10 * (int)twinDistance;
                     warmUp = warmUpBase = BeginSequenceFrameLength + 2 * 23 * FrameSlowerMax;
                     */
-                    if (warmUp == startFrame)
+                    //if (warmUpLeft == startFrame)
+                    if (warmUpLeft == 0)
                     {
-                        tellMe += "Trying to teleport";
+                        tellMe += "Trying to TP";
                         bool didIt = false;
-                        if (didIt = TryTeleport())
+                        if (didIt = TryTeleport(prcDebug))
                         {
                             SoundDef.Named("LTF_TpSpotOut").PlayOneShotOnCamera(parent.Map);
+
                             ResetOrder();
                             StartCooldown();
                             orderRange = 0;
                         }
-                        tellMe += ">>>didit: " + Tools.OkStr(didIt) + "<<<";
+                        tellMe += "\n>>>Did teleport: " + Tools.OkStr(didIt) + "<<<";
                     }
                 }
                 else
@@ -1842,7 +2022,7 @@ namespace LTF_Teleport
             }
             AnimStatus(prcDebug);
             tellMe += StatusLogUpdated;
-            Tools.Warn("TICK End: " + tellMe, prcDebug);
+            Tools.Warn(">>>TICK End<<< " + buildingName + "=>" + tellMe, prcDebug);
         }
 
         public override void PostExposeData()
@@ -1861,11 +2041,11 @@ namespace LTF_Teleport
             Scribe_Values.Look(ref MyLink, "LinkStatus");
 
             Scribe_Values.Look(ref MyWay, "way");
-            Scribe_Values.Look(ref Auto, "auto");
+            Scribe_Values.Look(ref AutomaticTeleportation, "AutomaticTeleportation");
 
             Scribe_Values.Look(ref teleportOrder, "order");
-            Scribe_Values.Look(ref warmUp, "warmUp");
-            Scribe_Values.Look(ref warmUpBase, "warmUpBase");
+            Scribe_Values.Look(ref warmUpLeft, "warmUpLeft");
+            Scribe_Values.Look(ref warmUpCalculated, "warmUpCalculated");
 
         }
         public override string CompInspectStringExtra()
@@ -1961,12 +2141,12 @@ namespace LTF_Teleport
                 }
 
                 // Auto or not
-                if ((Auto == false) || (Auto == true))
+                if ((AutomaticTeleportation == false) || (AutomaticTeleportation == true))
                 {
-                    String AutoName = ((Auto) ? ("Automatic") : ("Manual"));
-                    String ComplementaryAutoName = ((!Auto) ? ("Automatic") : ("Manual"));
+                    String AutoName = ((AutomaticTeleportation) ? ("Automatic") : ("Manual"));
+                    String ComplementaryAutoName = ((!AutomaticTeleportation) ? ("Automatic") : ("Manual"));
 
-                    Texture2D myGizmo = ((Auto) ? (MyGizmo.AutoOnGz) : (MyGizmo.AutoOffGz));
+                    Texture2D myGizmo = ((AutomaticTeleportation) ? (MyGizmo.AutoOnGz) : (MyGizmo.AutoOffGz));
                     String myLabel = "toggle";
                     String myDesc = AutoName + " -> " + ComplementaryAutoName;
                     yield return new Command_Action
@@ -2063,10 +2243,11 @@ namespace LTF_Teleport
 
                     yield return new Command_Action
                     {
-                        defaultLabel = "tpOut " + TpOutStatus + "->" + TpOutBegin,
+                        defaultLabel = "tpOut " + TeleportItemAnimStatus + "->" + TpSequenceBegin,
                         action = delegate
                         {
-                            BeginTpInAnimSeq();
+                            //BeginTpInAnimSeq();
+                            BeginTeleportItemAnimAnimSeq();
                         }
                     };
 

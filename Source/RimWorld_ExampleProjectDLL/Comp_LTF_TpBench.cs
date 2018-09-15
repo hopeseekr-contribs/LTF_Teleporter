@@ -410,19 +410,35 @@ namespace LTF_Teleport
                         {
                             String WayName = comp.WayNaming;
                             Texture2D myGizmo = null;
+
+                            //if (comp.StatusReady && comp.IsLinked && !comp.compTwin.StatusChillin)
                             if (comp.StatusReady && comp.IsLinked)
                                 myGizmo = comp.WayGizmoing;
                             else
                                 myGizmo = comp.IssueGizmoing;
 
+                            if(comp.compTwin.StatusChillin)
+                                myGizmo = comp.compTwin.IssueGizmoing;
+
                             String myLabel = "Cast "+WayName;
                             String myDesc = comp.WayDescription + "\n" + comp.StatusLogNoUpdate;
                             Action todo = ShowReport;
 
-                            if (comp.MyWay == Comp_LTF_TpSpot.Way.Out)
+                            if (comp.IsOrphan || comp.StatusChillin || comp.compTwin.StatusChillin)
+                            {
+                                todo = ShowReport;
+                                if (comp.IsOrphan)
+                                    myDesc = "Selected spot is orphan. You need to link it to another.";
+                                else if (comp.StatusChillin)
+                                    myDesc = "Selected spot has some cooldown.";
+                                else if (comp.compTwin.StatusChillin)
+                                    myDesc = "Selected spot twin has some cooldown.";
+                            }
+                            else if (comp.MyWay == Comp_LTF_TpSpot.Way.Out)
                                 todo = comp.OrderOut;
                             else if (comp.MyWay == Comp_LTF_TpSpot.Way.In)
-                                todo = comp.OrderIn;
+                                todo = comp.compTwin.OrderOut;
+                            //todo = comp.OrderIn;
                             else if (comp.MyWay == Comp_LTF_TpSpot.Way.Swap)
                                 todo = comp.OrderSwap;
                             else if (comp.MyWay == Comp_LTF_TpSpot.Way.No)

@@ -7,3 +7,10 @@ C:\Program Files (x86)\Steam\SteamApps\common\RimWorld\Mods\LTF_Teleporter\Assem
 C:\Program Files (x86)\Steam\SteamApps\common\RimWorld\Mods\LTF_Teleporter\Assemblies\LTF_Teleport.pdb
 C:\Program Files (x86)\Steam\SteamApps\common\RimWorld\Mods\LTF_Teleporter\Source\RimWorld_ExampleProjectDLL\obj\Debug\LTF_Teleporter.csprojAssemblyReference.cache
 C:\Program Files (x86)\Steam\SteamApps\common\RimWorld\Mods\LTF_Teleporter\Source\RimWorld_ExampleProjectDLL\obj\Debug\LTF_Teleporter.csproj.CopyComplete
+C:\Program Files (x86)\Steam\SteamApps\common\RimWorld\Mods\LTF_TeleporterSrc\Source\RimWorld_ExampleProjectDLL\obj\Debug\LTF_Teleporter.csprojAssemblyReference.cache
+C:\Program Files (x86)\Steam\SteamApps\common\RimWorld\Mods\LTF_TeleporterSrc\Source\RimWorld_ExampleProjectDLL\obj\Debug\LTF_Teleporter.csproj.CoreCompileInputs.cache
+C:\Program Files (x86)\Steam\SteamApps\common\RimWorld\Mods\LTF_TeleporterSrc\Source\RimWorld_ExampleProjectDLL\obj\Debug\LTF_Teleport.dll
+C:\Program Files (x86)\Steam\SteamApps\common\RimWorld\Mods\LTF_TeleporterSrc\Source\RimWorld_ExampleProjectDLL\obj\Debug\LTF_Teleport.pdb
+C:\Program Files (x86)\Steam\SteamApps\common\RimWorld\Mods\LTF_TeleporterSrc\Assemblies\LTF_Teleport.dll
+C:\Program Files (x86)\Steam\SteamApps\common\RimWorld\Mods\LTF_TeleporterSrc\Assemblies\LTF_Teleport.pdb
+C:\Program Files (x86)\Steam\SteamApps\common\RimWorld\Mods\LTF_TeleporterSrc\Source\RimWorld_ExampleProjectDLL\obj\Debug\LTF_Teleporter.csproj.CopyComplete
