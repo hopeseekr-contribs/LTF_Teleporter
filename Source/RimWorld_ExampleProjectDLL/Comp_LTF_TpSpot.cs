@@ -57,8 +57,8 @@ namespace LTF_Teleport
         float twinDistance = 0f;
         private bool teleportOrder = false;
         public float orderRange = 0f;
-        bool destination = false;
-        bool source = false;
+        //bool destination = false;
+        //bool source = false;
         public bool slideShowOn = false;
 
         // Comp 
@@ -79,7 +79,7 @@ namespace LTF_Teleport
         public int warmUpLeft = 0;
         public int warmUpBase = 0;
 
-        private int startFrame = 0;
+        //private int startFrame = 0;
         public float benchSynergy = 1;
 
         float weightCapacity = 0f;//will be set
@@ -200,7 +200,8 @@ namespace LTF_Teleport
         {
             string Answer = string.Empty;
 
-            Answer = "Warmup: " + Tools.Ticks2Str(warmUpBase);
+            //Answer = "Warmup: " + Tools.Ticks2Str(warmUpBase);
+            Answer = "Warmup: " + Tools.Ticks2Str(warmUpCalculated);
             Answer += " - Cooldown: " + Tools.Ticks2Str(cooldownBase);
             Answer += "\nRange: " + range;
             Answer += " - Weight capacity: " + weightCapacity;
@@ -218,7 +219,11 @@ namespace LTF_Teleport
         public void AutoToggle()
         {
             AutomaticTeleportation = !AutomaticTeleportation;
+
+            if (IsLinked)
+                compTwin.AutomaticTeleportation = AutomaticTeleportation;
         }
+
         public Way NextWay
         {
             get
@@ -423,18 +428,23 @@ namespace LTF_Teleport
         private void SetWarmUpBase(CompQuality comp = null)
         {
             if (comp == null) if ((comp = compQuality) == null) return;
-            //warmUp = (int) ( warmUpBase * (.5f + .5f*(.7f * currentWeight / weightCapacity + .3f * orderRange / TwinBestRange)));
-
-            // warmUpBase = (int)ToolsQuality.FactorCapacity(Props.warmUpBase, Props.warmUpQualityFactor, comp, false, false, false, prcDebug);
-            BeginSequenceFrameLength = (int)ToolsQuality.FactorCapacity(Props.warmUpBase, Props.warmUpQualityFactor, comp, false, false, false, prcDebug);
-
-            warmUpBase = BeginSequenceFrameLength + 2 * 23 * FrameSlowerMax;
-            startFrame = 23 * FrameSlowerMax;
-            //(int)1.5f * FrameSlowerMax * 23
-
-            warmUpCalculated = Mathf.Min(warmUpBase, warmUpCalculated);
-            warmUpLeft = warmUpCalculated;
+            warmUpBase = (int)ToolsQuality.FactorCapacity(Props.warmUpBase, Props.warmUpQualityFactor, comp, false, false, false, prcDebug);
+            /*
+            CalculateWarmUp();
+            SetWarmUpLeft();
+            */
         }
+
+        private void SetBeginSequenceFrameLength(CompQuality comp = null)
+        {
+            //int frameMin = (2 * 23 * FrameSlowerMax);
+            int frameMin = (int)(1.5f * 23 * FrameSlowerMax);
+            if (comp == null) if ((comp = compQuality) == null) return;
+            //BeginSequenceFrameLength = (int)ToolsQuality.FactorCapacity(warmUpCalculated, Props.warmUpQualityFactor, comp, false, false, false, prcDebug);
+            BeginSequenceFrameLength = warmUpCalculated - frameMin;
+            BeginSequenceFrameLength = (BeginSequenceFrameLength < frameMin) ? (frameMin) : (BeginSequenceFrameLength);
+        }
+
         private void SetCooldownBase(CompQuality comp = null)
         {
             if (comp == null) if ((comp = compQuality) == null) return;
@@ -477,13 +487,17 @@ namespace LTF_Teleport
         {
             teleportOrder = false;
 
-            if(source)
-                TeleportItemAnimStatus = Gfx.AnimStep.na;
-            if(destination)
+            TeleportItemAnimStatus = Gfx.AnimStep.na;
+            if (IsLinked)
+            {
                 compTwin.TeleportItemAnimStatus = Gfx.AnimStep.na;
+                compTwin.teleportOrder = false;
+            }
 
+            /*
             destination = false;
             source = false;
+            */
         }
 
         private void ResetSettings()
@@ -573,8 +587,11 @@ namespace LTF_Teleport
             warmUp = warmUpBase = BeginSequenceFrameLength + 2*23*FrameSlowerMax;
             */
 
-            SetWarmUpBase(); SetWarmUp();
-            BeginSequenceFrameLength = 2 * 23 * FrameSlowerMax;
+            //SetWarmUpBase(); SetWarmUp();
+            //CalculateWarmUp();
+            SetWarmUpLeft();
+            SetBeginSequenceFrameLength();
+            //BeginSequenceFrameLength = 2 * 23 * FrameSlowerMax;
 
             //initseq
             teleportOrder = true;
@@ -585,13 +602,15 @@ namespace LTF_Teleport
         {
             MyWay = Way.Out;
             WorkstationOrder(prcDebug);
-            BeginTeleportItemAnimAnimSeq();
+            BeginTeleportItemAnimSeq();
 
+            /*
             source = true;
             destination = false;
 
             compTwin.source = false;
             compTwin.destination = true;
+            */
         }
         /*
         public void OrderIn()
@@ -669,8 +688,90 @@ namespace LTF_Teleport
             else
             {
                 thing.Position = destination;
+                Tools.Warn("thing moved :" + thing.LabelShort, debug);
             }
         }
+
+        private bool TryTeleport(bool debug = false)
+        {
+            bool gotSomeJitter = false;
+
+            if (!StatusReady)
+            {
+                Tools.Warn("unready - wont tp", debug);
+                return false;
+            }
+            if (!IsLinked)
+            {
+                Tools.Warn("orphan - wont tp", debug);
+                return false;
+            }
+
+            if (MyWay == Way.Out)
+                if (!HasItems)
+                {
+                    Tools.Warn("WayOut no item - wont tp", debug);
+                    return false;
+                }
+
+            Tools.Warn("TP MyWay => " + MyWay, debug);
+
+            //IntVec3 destination = ((MyWay == Way.Out) ? (twin.Position) : (building.Position));
+            IntVec3 twinPos = twin.Position;
+            IntVec3 myPos = buildingPos.ToIntVec3();
+
+            IntVec3 twinJittered = twinPos;
+            IntVec3 myJittered = myPos;
+
+            //List<Thing> thingToTeleport = ((MyWay == Way.Out) ? (thingList) : (compTwin.thingList));
+            List<Thing> thingToTeleport = thingList;
+
+            // swap items
+            if (teleportOrder && compTwin.teleportOrder)
+            {
+                foreach (Thing cur in thingList)
+                {
+                    twinJittered = SomeJitter(twinJittered);
+                    // No jitter for now
+                    //TeleportItem(cur, twinJittered, debug);
+                    TeleportItem(cur, twinPos, debug);
+
+                    if (twinJittered != twinPos)
+                        gotSomeJitter = true;
+                }
+                foreach (Thing cur in compTwin.thingList)
+                {
+                    myJittered = SomeJitter(myJittered);
+                    // No jitter for now
+                    //TeleportItem(cur, myJittered, debug);
+                    TeleportItem(cur, myPos, debug);
+
+                    if (myJittered != myPos)
+                        gotSomeJitter = true;
+                }
+            }
+            else
+            {
+                foreach (Thing cur in thingToTeleport)
+                {
+                    twinJittered = SomeJitter(twinJittered);
+                    // No jitter for now
+                    //TeleportItem(cur, twinJittered, debug);
+                    TeleportItem(cur, twinPos, debug);
+
+                    if (twinJittered != twinPos)
+                        gotSomeJitter = true;
+                }
+            }
+
+
+            if (gotSomeJitter)
+                Messages.Message(buildingName + " got some jitter and missed its destination", this.parent, MessageTypeDefOf.TaskCompletion);
+
+            return true;
+        }
+
+        /*
         private bool TryTeleport(bool debug = false)
         {
             bool gotSomeJitter = false;
@@ -701,50 +802,75 @@ namespace LTF_Teleport
                     return false;
                 }
 
-            Tools.Warn("MyWay => " + MyWay, debug);
+            Tools.Warn("TP MyWay => " + MyWay, debug);
 
             switch (MyWay)
             {
                 case Way.In:
+                {
+                    //IntVec3 destination = ((MyWay == Way.Out) ? (twin.Position) : (building.Position));
+                    IntVec3 destination = building.Position;
+                    IntVec3 jittered = destination;
+
+                    //List<Thing> thingToTeleport = ((MyWay == Way.Out) ? (thingList) : (compTwin.thingList));
+                    List<Thing> thingToTeleport = compTwin.thingList;
+
+                    //public List<Thing> thingToTeleport =
+                    foreach (Thing cur in thingToTeleport)
                     {
-                        //IntVec3 destination = ((MyWay == Way.Out) ? (twin.Position) : (building.Position));
-                        IntVec3 destination = building.Position;
-                        IntVec3 jittered = destination;
-
-                        //List<Thing> thingToTeleport = ((MyWay == Way.Out) ? (thingList) : (compTwin.thingList));
-                        List<Thing> thingToTeleport = compTwin.thingList;
-
-                        //public List<Thing> thingToTeleport =
-                        foreach (Thing cur in thingToTeleport)
+                        // If object is not on the twin spot, it has moved since recording
+                        if (cur.Position != twin.Position)
                         {
-                            // If object is not on the twin spot, it has moved since recording
-                            if (cur.Position != twin.Position)
-                            {
-                                Tools.Warn(cur.Label + " has moved since record.", debug);
-                                continue;
-                            }
-
-                            jittered = SomeJitter(destination);
-                            // No jitter for now
-                            //TeleportItem(cur, jittered, prcDebug);
-
-                            TeleportItem(cur, destination, debug);
-
-                            if (jittered != destination)
-                                gotSomeJitter = true;
+                            Tools.Warn(cur.Label + " has moved since record.", debug);
+                            continue;
                         }
-                        break;
+
+                        jittered = SomeJitter(destination);
+                        // No jitter for now
+                        //TeleportItem(cur, jittered, prcDebug);
+
+                        TeleportItem(cur, destination, debug);
+
+                        if (jittered != destination)
+                            gotSomeJitter = true;
                     }
+                    break;
+                }
                 case Way.Out:
+                {
+                    //IntVec3 destination = ((MyWay == Way.Out) ? (twin.Position) : (building.Position));
+                    IntVec3 destination = twin.Position;
+                    IntVec3 jittered = destination;
+
+                    //List<Thing> thingToTeleport = ((MyWay == Way.Out) ? (thingList) : (compTwin.thingList));
+                    List<Thing> thingToTeleport = thingList;
+
+                    if (teleportOrder && compTwin.teleportOrder)
                     {
-                        //IntVec3 destination = ((MyWay == Way.Out) ? (twin.Position) : (building.Position));
-                        IntVec3 destination = twin.Position;
-                        IntVec3 jittered = destination;
+                            foreach (Thing cur in thingList)
+                            {
 
-                        //List<Thing> thingToTeleport = ((MyWay == Way.Out) ? (thingList) : (compTwin.thingList));
-                        List<Thing> thingToTeleport = thingList;
+                                jittered = SomeJitter(destination);
+                                // No jitter for now
+                                //TeleportItem(cur, jittered, prcDebug);
+                                TeleportItem(cur, destination, debug);
 
-                        //public List<Thing> thingToTeleport =
+                                if (jittered != destination)
+                                    gotSomeJitter = true;
+                            }
+                            foreach (Thing cur in compTwin.thingList)
+                            {
+                                jittered = SomeJitter(posi);
+                                // No jitter for now
+                                //TeleportItem(cur, jittered, prcDebug);
+                                TeleportItem(cur, destination, debug);
+
+                                if (jittered != destination)
+                                    gotSomeJitter = true;
+                            }
+                        }
+                    else
+                    {
                         foreach (Thing cur in thingToTeleport)
                         {
 
@@ -755,10 +881,10 @@ namespace LTF_Teleport
 
                             if (jittered != destination)
                                 gotSomeJitter = true;
-
                         }
-                        break;
                     }
+                    break;
+                }
 
                 case Way.Swap:
                     if (HasItems)
@@ -775,6 +901,11 @@ namespace LTF_Teleport
                     if (compTwin.HasItems)
                         foreach (Thing cur in compTwin.thingList)
                         {
+                            // To dodge double tp, wont tp the other way something already tped one way
+                            //????
+                            if (thingList.Contains(cur))
+                                continue;
+
                             IntVec3 destination = building.Position;
                             IntVec3 jittered = building.Position;
                             jittered = SomeJitter(destination);
@@ -791,6 +922,7 @@ namespace LTF_Teleport
 
             return true;
         }
+        */
 
         private void StopCooldown()
         {
@@ -815,9 +947,21 @@ namespace LTF_Teleport
             warmUpLeft = warmUpCalculated;
         }
         */
-        private void SetWarmUp()
+        private void CalculateWarmUp()
         {
-            warmUpCalculated = (int)(((float)warmUpBase + (float)compTwin.warmUpBase)/2f * (.5f + .5f * (.7f * currentWeight / weightCapacity + .3f * orderRange / TwinBestRange)));
+            //warmUpCalculated = (int)(((float)warmUpBase + (float)compTwin.warmUpBase)/2f * (.5f + .5f * (.7f * currentWeight / weightCapacity + .3f * orderRange / TwinBestRange)));
+            //SetWarmUpLeft();
+            if (IsLinked)
+            {
+                warmUpCalculated = (int)(((float)warmUpBase + (float)compTwin.warmUpBase) / 2f);
+                compTwin.warmUpCalculated = warmUpCalculated;
+            }
+            else
+                warmUpCalculated = warmUpBase;
+        }
+
+        private void SetWarmUpLeft()
+        {
             warmUpLeft = warmUpCalculated;
         }
 
@@ -964,6 +1108,7 @@ namespace LTF_Teleport
             newComp.compTwin.ResetOrder();
 
             UpdateDistance();
+            CalculateWarmUp();
 
             Tools.Warn(
                 "Inc " +
@@ -1364,7 +1509,7 @@ namespace LTF_Teleport
             beginSequenceI = BeginSequenceFrameLength;
             //beginSequenceI                ((TpIn) ? (5) : (warmUpBase));
         }
-        public void BeginTeleportItemAnimAnimSeq()
+        public void BeginTeleportItemAnimSeq()
         {
             TeleportItemAnimStatus = Gfx.AnimStep.begin;
             SetBeginAnimLength();
@@ -1641,7 +1786,7 @@ namespace LTF_Teleport
 
                 
                 if (teleportOrder && HasWarmUp)
-                    bla += "\nWarm up: " + WarmUpProgress.ToStringPercent("F0") + " (" + Tools.Ticks2Str(warmUpLeft) + " left)";
+                    bla += "[WU]Warm up: " + WarmUpProgress.ToStringPercent("F0") + " (" + Tools.Ticks2Str(warmUpLeft) + " left)";
 
                 return bla;
             }
@@ -1923,7 +2068,8 @@ namespace LTF_Teleport
             }
 
             Tools.Warn("TICK checking: " + tellMe, prcDebug);
-            CheckItems();
+            if(WarmUpProgress>10)
+                CheckItems();
 
             if (StatusChillin)
             {
@@ -1941,9 +2087,9 @@ namespace LTF_Teleport
             }
 
             //if ((StatusChillin) || (StatusOverweight) || (StatusNoItem))
-            if (StatusChillin || StatusOverweight)
+            if (StatusChillin || StatusOverweight || compTwin.StatusChillin || compTwin.StatusOverweight)
             {
-                Tools.Warn(tellMe + "TICK exit bc not ready: " + tellMe, prcDebug);
+                Tools.Warn(tellMe + " - TICK exit bc not ready: ", prcDebug);
                 return;
             }
 
@@ -1952,34 +2098,46 @@ namespace LTF_Teleport
                 tellMe += "ready to tp " + "N:" + RegisteredCount + ":" + DumpList();
             }
 
-            /* AUTO
-            if (AutomaticTeleportation && !teleportOrder)
+            // AUTO
+            //if (AutomaticTeleportation && !teleportOrder)
+            if ( (AutomaticTeleportation && !teleportOrder) && (IsLinked && !compTwin.teleportOrder))
             {
+                Tools.Warn(tellMe + " - Starting automatic order", prcDebug);
                 switch (MyWay)
                 {
                     case Way.Out:
-                        OrderOut();
+                        if(HasItems && StatusReady)
+                            OrderOut();
                         break;
                     case Way.In:
-                        compTwin.OrderOut();
+                        if(compTwin.HasItems && compTwin.StatusReady)
+                            compTwin.OrderOut();
                         //OrderIn();
                         break;
                     case Way.Swap:
-                        OrderOut();
-                        OrderIn();
+                        if (HasItems && StatusReady)
+                            OrderOut();
+                        if (compTwin.HasItems && compTwin.StatusReady)
+                            compTwin.OrderOut();
+                        //OrderIn();
                         //compTwin.OrderOut();
 
                         break;
                     default:break;
                 }
             }
-            */
-
+            else
+            {
+                Tools.Warn("no automatic order needed", prcDebug);
+            }
+            
             if (teleportOrder)
+            {
+                if (HasWarmUp)
                 {
-                if (warmUpLeft > 0)
-                {
+                    tellMe += "old warmup:"+warmUpLeft;
                     warmUpLeft--;
+                    tellMe += "new warmup:" + warmUpLeft;
 
                     tellMe += Tools.CapacityString(warmUpLeft, warmUpCalculated) + ":" + WarmUpProgress;
                     myOpacity = ((TeleportItemAnimActive) ? (.6f + .4f * Rand.Range(0, 1)) : (1));
@@ -2007,6 +2165,10 @@ namespace LTF_Teleport
                         if (didIt = TryTeleport(prcDebug))
                         {
                             SoundDef.Named("LTF_TpSpotOut").PlayOneShotOnCamera(parent.Map);
+                            //if(MyWay == Way.Out && compTwin.MyWay == Way.Out)
+                            compTwin.ResetOrder();
+                            compTwin.StartCooldown();
+                            compTwin.orderRange = 0;
 
                             ResetOrder();
                             StartCooldown();
@@ -2020,9 +2182,15 @@ namespace LTF_Teleport
                     slideShowOn = false;
                 }
             }
+            else
+            {
+                Tools.Warn("no teleporter order", prcDebug);
+            }
+
             AnimStatus(prcDebug);
-            tellMe += StatusLogUpdated;
-            Tools.Warn(">>>TICK End<<< " + buildingName + "=>" + tellMe, prcDebug);
+            tellMe += "\n" + StatusLogUpdated;
+            Tools.Warn(buildingName + "=>" + tellMe, prcDebug);
+            Tools.Warn(">>>TICK End<<< ", prcDebug);
         }
 
         public override void PostExposeData()
@@ -2046,8 +2214,8 @@ namespace LTF_Teleport
             Scribe_Values.Look(ref teleportOrder, "order");
             Scribe_Values.Look(ref warmUpLeft, "warmUpLeft");
             Scribe_Values.Look(ref warmUpCalculated, "warmUpCalculated");
-
         }
+
         public override string CompInspectStringExtra()
         {
             string text = base.CompInspectStringExtra();
@@ -2247,7 +2415,7 @@ namespace LTF_Teleport
                         action = delegate
                         {
                             //BeginTpInAnimSeq();
-                            BeginTeleportItemAnimAnimSeq();
+                            BeginTeleportItemAnimSeq();
                         }
                     };
 
