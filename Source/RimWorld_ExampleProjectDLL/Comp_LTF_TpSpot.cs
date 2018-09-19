@@ -244,6 +244,21 @@ namespace LTF_Teleport
         public void BrowseWay()
         {
             MyWay = NextWay;
+            switch (MyWay)
+            {
+                case Way.Out:
+                    compTwin.MyWay=Way.In;
+                    break;
+                case Way.In:
+                    compTwin.MyWay = Way.Out;
+                    break;
+                case Way.Swap:
+                    compTwin.MyWay = Way.Swap;
+                    break;
+                case Way.No:
+                    compTwin.MyWay = Way.No;
+                    break;
+            }
         }
         bool InvalidWay
         {
@@ -536,6 +551,16 @@ namespace LTF_Teleport
                 return ((teleportOrder) && (warmUpCalculated == warmUpLeft));
             }
         }
+        public float CooldownProgress
+        {
+            get
+            {
+                if (cooldownBase == 0)
+                    return 0;
+
+                return (currentCooldown / cooldownBase);
+            }
+        }
         public float WarmUpProgress
         {
             get
@@ -600,35 +625,31 @@ namespace LTF_Teleport
         // Gizmo command no debug pls
         public void OrderOut()
         {
+            if (HasNothing)
+                return;
             MyWay = Way.Out;
+            compTwin.MyWay = Way.In;
+
             WorkstationOrder(prcDebug);
             BeginTeleportItemAnimSeq();
-
-            /*
-            source = true;
-            destination = false;
-
-            compTwin.source = false;
-            compTwin.destination = true;
-            */
         }
-        /*
+        
         public void OrderIn()
         {
-            WorkstationOrder(prcDebug);
-            compTwin.BeginTeleportItemAnimAnimSeq();
-
-            source = false;
-            destination = true;
-
-            compTwin.source = true;
-            compTwin.destination = false;
+            compTwin.OrderOut();
         }
-        */
+        
         public void OrderSwap()
         {
+            MyWay = Way.Swap;
+            compTwin.MyWay = Way.Swap;
+
+            WorkstationOrder(prcDebug);
+            BeginTeleportItemAnimSeq();
+            /*
             OrderOut();
             compTwin.OrderOut();
+            */
         }
             /*
             public void OrderSwap()
@@ -706,6 +727,11 @@ namespace LTF_Teleport
                 Tools.Warn("orphan - wont tp", debug);
                 return false;
             }
+            if (!teleportOrder)
+            {
+                Tools.Warn("no tp order - wont tp", debug);
+                return false;
+            }
 
             if (MyWay == Way.Out)
                 if (!HasItems)
@@ -727,40 +753,52 @@ namespace LTF_Teleport
             List<Thing> thingToTeleport = thingList;
 
             // swap items
-            if (teleportOrder && compTwin.teleportOrder)
+            //if (teleportOrder && compTwin.teleportOrder)
+            if ( MyWay == Way.Swap && compTwin.MyWay == Way.Swap )
             {
                 foreach (Thing cur in thingList)
                 {
-                    twinJittered = SomeJitter(twinJittered);
+                    Tools.Warn("looping " + cur.Label, debug);
                     // No jitter for now
-                    //TeleportItem(cur, twinJittered, debug);
+                    /*
+                    twinJittered = SomeJitter(twinJittered);
+                    TeleportItem(cur, twinJittered, debug);
+                    */
                     TeleportItem(cur, twinPos, debug);
-
+                    /*
                     if (twinJittered != twinPos)
                         gotSomeJitter = true;
+                    */
                 }
                 foreach (Thing cur in compTwin.thingList)
                 {
-                    myJittered = SomeJitter(myJittered);
+                    Tools.Warn("looping " + cur.Label, debug);
+                    //myJittered = SomeJitter(myJittered);
                     // No jitter for now
                     //TeleportItem(cur, myJittered, debug);
                     TeleportItem(cur, myPos, debug);
 
+                    /*
                     if (myJittered != myPos)
                         gotSomeJitter = true;
+                    */
                 }
             }
-            else
+            
+            else if (MyWay == Way.Out)
             {
                 foreach (Thing cur in thingToTeleport)
                 {
-                    twinJittered = SomeJitter(twinJittered);
+                    Tools.Warn("looping " + cur.Label, debug);
+                    //twinJittered = SomeJitter(twinJittered);
                     // No jitter for now
                     //TeleportItem(cur, twinJittered, debug);
                     TeleportItem(cur, twinPos, debug);
 
+                    /*
                     if (twinJittered != twinPos)
                         gotSomeJitter = true;
+                    */
                 }
             }
 
@@ -1513,6 +1551,11 @@ namespace LTF_Teleport
         {
             TeleportItemAnimStatus = Gfx.AnimStep.begin;
             SetBeginAnimLength();
+            if(IsLinked && MyWay == Way.Swap && compTwin.HasItems)
+            {
+                compTwin.TeleportItemAnimStatus = Gfx.AnimStep.begin;
+                compTwin.SetBeginAnimLength();
+            }
         }
         /*
         public void BeginTpInAnimSeq()
@@ -1745,7 +1788,16 @@ namespace LTF_Teleport
         private bool StatusHasItem { get { return !StatusNoItem; } }
         public bool StatusOverweight { get { return HasStatus(BuildingStatus.overweight); } }
         public bool IsLightBoned { get { return !StatusOverweight; } }
-        public bool StatusChillin { get { return HasStatus(BuildingStatus.cooldown); } }
+        public bool StatusChillin {
+            get {
+                return ( 
+                    // my cooldown status
+                    HasStatus(BuildingStatus.cooldown) || 
+                    // my link cooldown status
+                    ( IsLinked && compTwin.HasStatus(BuildingStatus.cooldown) ) 
+                    );
+            }
+        }
         public bool IsHot { get { return !StatusChillin; } }
 
         public bool StatusReady { get { return HasStatus(BuildingStatus.capable); } }
@@ -1772,21 +1824,20 @@ namespace LTF_Teleport
 
             if (StatusNoIssue)
             {
-
                 int itemCount = RegisteredCount;
                 string grammar = ((RegisteredCount > 1) ? ("s") : (""));
 
                 bla += Tools.OkStr(teleportOrder) +
                     ((teleportOrder) ? ("Roger;") : ("Say what?"));
 
-                bla = (!HasItems)?
+                bla = (HasNothing)?
                     ("Nothing"):
                     (RegisteredCount + " item" + grammar + ' ' + Tools.CapacityString(currentWeight, weightCapacity) + " kg")+
                     ';';
 
                 
                 if (teleportOrder && HasWarmUp)
-                    bla += "[WU]Warm up: " + WarmUpProgress.ToStringPercent("F0") + " (" + Tools.Ticks2Str(warmUpLeft) + " left)";
+                    bla += "Warming up: " + WarmUpProgress.ToStringPercent("F0") + " (" + Tools.Ticks2Str(warmUpLeft) + " left)";
 
                 return bla;
             }
@@ -1807,10 +1858,11 @@ namespace LTF_Teleport
             if (StatusOverweight)
                 bla += ' ' + currentWeight + "kg. >" + weightCapacity + " kg;";
 
-            if (StatusChillin) { 
-                float coolPerc = currentCooldown / cooldownBase;
-                bla += " Cooldown " + ((updateDisplay) ? (coolPerc.ToStringPercent("F0")) : ("undergoing")) + ";";
-            }
+            if (StatusChillin)
+                if (IsLinked && CooldownProgress == 0) 
+                    bla += " Linked spot cooldown " + compTwin.CooldownProgress.ToStringPercent("F0");
+                else
+                    bla += " Cooldown " + ((updateDisplay) ? (CooldownProgress.ToStringPercent("F0")) : ("undergoing")) + ";";
 
             if (IsOrphan)
                 bla += " Orphan.";
@@ -1846,7 +1898,10 @@ namespace LTF_Teleport
             }
 
             // nothing there standing
-            if (requiresPower && StatusNoPower)
+            if ( 
+                    (requiresPower && StatusNoPower) || 
+                    IsOrphan
+                )
             {
                 Tools.Warn(buildingName + " Nothing to draw: " + TeleportCapable, gfxDebug);
                 return;
@@ -1869,9 +1924,8 @@ namespace LTF_Teleport
             // calculate underlay
             if (requiresPower && drawUnderlay)
             {
-                if ((HasItems) || ((HasNothing) && (HasPoweredFacility)) || (StatusReady))
-                    underlay = MyGfx.Status2UnderlayMaterial(this, gfxDebug);
-
+                //if ((HasItems) || ((HasNothing) && (HasPoweredFacility)) || (StatusReady))
+                underlay = MyGfx.Status2UnderlayMaterial(this, gfxDebug);
                 underlay2 = MyGfx.UnderlayM;
                 Tools.Warn("Underlay calculating - 1: " + (underlay != null) + "; 2: " + (underlay2 != null), gfxDebug);
             }
@@ -1884,8 +1938,15 @@ namespace LTF_Teleport
                 if (TpSequenceBegin)
                     overlay = MyGfx.Status2OverlayMaterial(this, FactionMajority, gfxDebug);
 
-                if (requiresPower && !StatusReady && HasItems)
-                    warning = MyGfx.Status2WarningMaterial(this, gfxDebug);
+                //if (requiresPower && !StatusReady && HasItems)
+                if (requiresPower)
+                {
+                    //if (!StatusReady)
+                    if(!StatusNoIssue)
+                        warning = MyGfx.Status2WarningMaterial(this, gfxDebug);
+                    else if (!compTwin.StatusNoIssue)
+                        warning = MyGfx.Status2WarningMaterial(compTwin, gfxDebug);
+                }
 
                 Tools.Warn("Overlay calculating - warning: " + (warning != null) + "; anim: " + (overlay != null), gfxDebug);
             }
@@ -2068,8 +2129,8 @@ namespace LTF_Teleport
             }
 
             Tools.Warn("TICK checking: " + tellMe, prcDebug);
-            if(WarmUpProgress>10)
-                CheckItems();
+            //if(WarmUpProgress>10)
+            CheckItems();
 
             if (StatusChillin)
             {
@@ -2093,35 +2154,33 @@ namespace LTF_Teleport
                 return;
             }
 
-            if (StatusReady)
+            if (StatusReady && IsLinked && compTwin.StatusReady)
             {
                 tellMe += "ready to tp " + "N:" + RegisteredCount + ":" + DumpList();
             }
 
-            // AUTO
-            //if (AutomaticTeleportation && !teleportOrder)
-            if ( (AutomaticTeleportation && !teleportOrder) && (IsLinked && !compTwin.teleportOrder))
+            // automatic ; no order yet ; ready
+            if (
+                    (IsLinked && AutomaticTeleportation ) && 
+                    (!teleportOrder && !compTwin.teleportOrder) &&
+                    (StatusReady && compTwin.StatusReady)
+                )
             {
                 Tools.Warn(tellMe + " - Starting automatic order", prcDebug);
                 switch (MyWay)
                 {
                     case Way.Out:
-                        if(HasItems && StatusReady)
+                        if(HasItems)
                             OrderOut();
                         break;
                     case Way.In:
-                        if(compTwin.HasItems && compTwin.StatusReady)
-                            compTwin.OrderOut();
-                        //OrderIn();
+                        if(compTwin.HasItems)
+                            OrderIn();
                         break;
                     case Way.Swap:
-                        if (HasItems && StatusReady)
-                            OrderOut();
-                        if (compTwin.HasItems && compTwin.StatusReady)
-                            compTwin.OrderOut();
-                        //OrderIn();
-                        //compTwin.OrderOut();
-
+                        // one or another has something to tp
+                        if (HasItems || compTwin.HasItems)
+                            OrderSwap();
                         break;
                     default:break;
                 }

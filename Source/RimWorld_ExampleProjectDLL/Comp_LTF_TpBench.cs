@@ -437,7 +437,8 @@ namespace LTF_Teleport
                             else if (comp.MyWay == Comp_LTF_TpSpot.Way.Out)
                                 todo = comp.OrderOut;
                             else if (comp.MyWay == Comp_LTF_TpSpot.Way.In)
-                                todo = comp.compTwin.OrderOut;
+                                todo = comp.OrderIn;
+                            //todo = comp.compTwin.OrderOut;
                             //todo = comp.OrderIn;
                             else if (comp.MyWay == Comp_LTF_TpSpot.Way.Swap)
                                 todo = comp.OrderSwap;
