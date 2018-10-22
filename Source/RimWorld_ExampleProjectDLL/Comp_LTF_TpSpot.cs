@@ -2071,9 +2071,17 @@ namespace LTF_Teleport
                 return;
             }
 
+            if (IsOrphan)
+            {
+                Tools.Warn("no need to comptick if not linked", prcDebug);
+                return;
+            }
+                
+
             string tellMe = string.Empty;
             tellMe = Tools.OkStr(StatusReady) + "[" + TeleportCapable + "]" + buildingName + ": ";
 
+            Tools.Warn("power checking: " + requiresPower, prcDebug);
             if (requiresPower)
             {
                 // Power - Will return if status
@@ -2089,6 +2097,7 @@ namespace LTF_Teleport
                 }
             }
 
+            Tools.Warn("bench checking: " + requiresBench, prcDebug);
             if (requiresBench)
             {
                 if (!benchManaged)
@@ -2128,10 +2137,11 @@ namespace LTF_Teleport
                 }
             }
 
-            Tools.Warn("TICK checking: " + tellMe, prcDebug);
+            Tools.Warn("dependencies checked: " + tellMe, prcDebug);
             //if(WarmUpProgress>10)
             CheckItems();
 
+            Tools.Warn("Items checked", prcDebug);
             if (StatusChillin)
             {
                 tellMe += " Chillin;";
@@ -2147,18 +2157,18 @@ namespace LTF_Teleport
                 tellMe += " nothing2do;";
             }
 
-            //if ((StatusChillin) || (StatusOverweight) || (StatusNoItem))
             if (StatusChillin || StatusOverweight || compTwin.StatusChillin || compTwin.StatusOverweight)
             {
                 Tools.Warn(tellMe + " - TICK exit bc not ready: ", prcDebug);
                 return;
             }
-
-            if (StatusReady && IsLinked && compTwin.StatusReady)
+            Tools.Warn("stating we ready", prcDebug);
+            if (IsLinked && StatusReady && compTwin.StatusReady)
             {
                 tellMe += "ready to tp " + "N:" + RegisteredCount + ":" + DumpList();
             }
 
+            Tools.Warn("checking if automatic", prcDebug);
             // automatic ; no order yet ; ready
             if (
                     (IsLinked && AutomaticTeleportation ) && 
@@ -2189,7 +2199,8 @@ namespace LTF_Teleport
             {
                 Tools.Warn("no automatic order needed", prcDebug);
             }
-            
+
+            Tools.Warn("TP order", prcDebug);
             if (teleportOrder)
             {
                 if (HasWarmUp)
