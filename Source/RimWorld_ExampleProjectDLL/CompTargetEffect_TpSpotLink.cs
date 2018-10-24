@@ -35,7 +35,9 @@ namespace LTF_Teleport
             }
 
             // both catchers
-            if (tpSpot1.def.defName == "LTF_TpCatcher" && tpSpot2.def.defName == "LTF_TpCatcher")
+            //if (tpSpot1.def.defName == "LTF_TpCatcher" && tpSpot2.def.defName == "LTF_TpCatcher")
+            // At least 1 tpspot
+            if (!Comp_LTF_TpSpot.AtLeastOneTpSpot(tpSpot1, tpSpot2))
             {
                 Messages.Message("At least one of the two spots must be powered.", this.parent, MessageTypeDefOf.TaskCompletion);
                 return;
@@ -58,15 +60,22 @@ namespace LTF_Teleport
             Tools.Warn("Trying to register: " + tpSpot2.Label + " in " + tpSpot1.Label, spot1Comp.prcDebug);
 
             // tp spot without powered facility
+            //if ((spot1Comp.requiresPower) && (!spot1Comp.HasPoweredFacility))
+            /*
             if ((spot1Comp.requiresPower) && (!spot1Comp.HasPoweredFacility))
             {
                 Messages.Message(tpSpot1.Label + " requires a powered facility to be linked", this.parent, MessageTypeDefOf.TaskCompletion);
                 return;
             }
+            */
 
-            if (tpSpot1.Position.DistanceTo(tpSpot2.Position) > ToolsBuilding.TheoricBestRange(spot1Comp, spot2Comp))
+            float distance = tpSpot1.Position.DistanceTo(tpSpot2.Position);
+            float bestRange = ToolsBuilding.TheoricBestRange(spot1Comp, spot2Comp);
+
+            Tools.Warn("dist:"+distance+" ; range:"+bestRange, spot1Comp.prcDebug);
+            if ( distance > bestRange)
             {
-                Messages.Message(tpSpot2.Label + " is out of "+tpSpot1.Label+" range ("+spot1Comp.range+")", this.parent, MessageTypeDefOf.TaskCompletion);
+                Messages.Message(tpSpot2.Label + " is out of range (distance : " + distance + ", max : " + bestRange + ")", this.parent, MessageTypeDefOf.TaskCompletion);
                 return;
             }
 

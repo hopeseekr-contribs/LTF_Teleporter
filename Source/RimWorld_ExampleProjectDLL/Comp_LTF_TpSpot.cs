@@ -438,7 +438,8 @@ namespace LTF_Teleport
             range += 3 * TwinWorstFacilityRange;
             range *= benchSynergy;
 
-            range = Tools.LimitRadius(range);
+            // unleashed
+            //range = Tools.LimitRadius(range);
         }
         private void SetWarmUpBase(CompQuality comp = null)
         {
@@ -576,7 +577,8 @@ namespace LTF_Teleport
                 }
                 if (warmUpLeft == 0)
                 {
-                    Tools.Warn("Unset warmUpLeft", prcDebug);
+                    // spammy
+                    //Tools.Warn("Unset warmUpLeft", prcDebug);
                     return 1;
                 }
 
@@ -689,6 +691,11 @@ namespace LTF_Teleport
                 Tools.Warn("!!! thing == null", debug);
                 return;
             }
+            if(destination == null)
+            {
+                Tools.Warn("!!! destination == null", debug);
+                return;
+            }
             
 
             if (thing.Position == destination)
@@ -696,15 +703,35 @@ namespace LTF_Teleport
 
             if (thing is Pawn pawn)
             {
-                bool PastDraft = pawn.Drafted;
-                Tools.Warn("Pawn moving :" + pawn.Name.ToStringShort + " draft:" + pawn.Drafted, debug);
-                pawn.drafter.Drafted = false;
+                //Tools.Warn("Pawn moving :" + pawn.Name.ToStringShort, debug);
+                Tools.Warn("Pawn moving :" + pawn.ThingID, debug);
 
-                pawn.DeSpawn();
-                GenSpawn.Spawn(pawn, destination, myMap);
-                pawn.drafter.Drafted = PastDraft;
+                if ( pawn.RaceProps.Animal )
+                {
+                    pawn.DeSpawn();
+                    GenSpawn.Spawn(pawn, destination, myMap);
+                    Tools.Warn("Pawn moved :" + pawn.ThingID, debug);
+                }
+                else
+                {
+                    if (pawn.IsColonist)
+                    {
+                        bool PastDraft = pawn.Drafted;
+                        pawn.drafter.Drafted = false;
 
-                Tools.Warn("Pawn moved :" + pawn.Name.ToStringShort + " draft:" + pawn.Drafted, debug);
+                        pawn.DeSpawn();
+                        GenSpawn.Spawn(pawn, destination, myMap);
+                        pawn.drafter.Drafted = PastDraft;
+                    }
+                    else
+                    {
+                        pawn.DeSpawn();
+                        GenSpawn.Spawn(pawn, destination, myMap);
+                    }
+
+                    Tools.Warn("Pawn moved :" + pawn.ThingID + " draft:" + pawn.Drafted, debug);
+                }
+                
             }
             else
             {
@@ -748,6 +775,8 @@ namespace LTF_Teleport
 
             IntVec3 twinJittered = twinPos;
             IntVec3 myJittered = myPos;
+
+            Tools.Warn("myPos : " + myPos + " ; twinPos : " + twinPos, debug);
 
             //List<Thing> thingToTeleport = ((MyWay == Way.Out) ? (thingList) : (compTwin.thingList));
             List<Thing> thingToTeleport = thingList;
@@ -794,6 +823,7 @@ namespace LTF_Teleport
                     // No jitter for now
                     //TeleportItem(cur, twinJittered, debug);
                     TeleportItem(cur, twinPos, debug);
+                    
 
                     /*
                     if (twinJittered != twinPos)
@@ -808,159 +838,6 @@ namespace LTF_Teleport
 
             return true;
         }
-
-        /*
-        private bool TryTeleport(bool debug = false)
-        {
-            bool gotSomeJitter = false;
-
-            //if (!StatusReady || !compTwin.StatusReady)
-            if (!StatusReady)
-            {
-                Tools.Warn("unready - wont tp", debug);
-                return false;
-            }
-            if (!IsLinked)
-            {
-                Tools.Warn("orphan - wont tp", debug);
-                return false;
-            }
-
-            if (MyWay == Way.Out)
-                if (!HasItems)
-                {
-                    Tools.Warn("WayOut no item - wont tp", debug);
-                    return false;
-                }
-
-            if (MyWay == Way.In)
-                if (!compTwin.HasItems)
-                {
-                    Tools.Warn("WayIn no item - wont tp", debug);
-                    return false;
-                }
-
-            Tools.Warn("TP MyWay => " + MyWay, debug);
-
-            switch (MyWay)
-            {
-                case Way.In:
-                {
-                    //IntVec3 destination = ((MyWay == Way.Out) ? (twin.Position) : (building.Position));
-                    IntVec3 destination = building.Position;
-                    IntVec3 jittered = destination;
-
-                    //List<Thing> thingToTeleport = ((MyWay == Way.Out) ? (thingList) : (compTwin.thingList));
-                    List<Thing> thingToTeleport = compTwin.thingList;
-
-                    //public List<Thing> thingToTeleport =
-                    foreach (Thing cur in thingToTeleport)
-                    {
-                        // If object is not on the twin spot, it has moved since recording
-                        if (cur.Position != twin.Position)
-                        {
-                            Tools.Warn(cur.Label + " has moved since record.", debug);
-                            continue;
-                        }
-
-                        jittered = SomeJitter(destination);
-                        // No jitter for now
-                        //TeleportItem(cur, jittered, prcDebug);
-
-                        TeleportItem(cur, destination, debug);
-
-                        if (jittered != destination)
-                            gotSomeJitter = true;
-                    }
-                    break;
-                }
-                case Way.Out:
-                {
-                    //IntVec3 destination = ((MyWay == Way.Out) ? (twin.Position) : (building.Position));
-                    IntVec3 destination = twin.Position;
-                    IntVec3 jittered = destination;
-
-                    //List<Thing> thingToTeleport = ((MyWay == Way.Out) ? (thingList) : (compTwin.thingList));
-                    List<Thing> thingToTeleport = thingList;
-
-                    if (teleportOrder && compTwin.teleportOrder)
-                    {
-                            foreach (Thing cur in thingList)
-                            {
-
-                                jittered = SomeJitter(destination);
-                                // No jitter for now
-                                //TeleportItem(cur, jittered, prcDebug);
-                                TeleportItem(cur, destination, debug);
-
-                                if (jittered != destination)
-                                    gotSomeJitter = true;
-                            }
-                            foreach (Thing cur in compTwin.thingList)
-                            {
-                                jittered = SomeJitter(posi);
-                                // No jitter for now
-                                //TeleportItem(cur, jittered, prcDebug);
-                                TeleportItem(cur, destination, debug);
-
-                                if (jittered != destination)
-                                    gotSomeJitter = true;
-                            }
-                        }
-                    else
-                    {
-                        foreach (Thing cur in thingToTeleport)
-                        {
-
-                            jittered = SomeJitter(destination);
-                            // No jitter for now
-                            //TeleportItem(cur, jittered, prcDebug);
-                            TeleportItem(cur, destination, debug);
-
-                            if (jittered != destination)
-                                gotSomeJitter = true;
-                        }
-                    }
-                    break;
-                }
-
-                case Way.Swap:
-                    if (HasItems)
-                        foreach (Thing cur in thingList)
-                        {
-                            IntVec3 destination = twin.Position;
-                            IntVec3 jittered = twin.Position;
-                            jittered = SomeJitter(destination, prcDebug);
-
-                            TeleportItem(cur, jittered, prcDebug);
-                            if (jittered != destination)
-                                gotSomeJitter = true;
-                        }
-                    if (compTwin.HasItems)
-                        foreach (Thing cur in compTwin.thingList)
-                        {
-                            // To dodge double tp, wont tp the other way something already tped one way
-                            //????
-                            if (thingList.Contains(cur))
-                                continue;
-
-                            IntVec3 destination = building.Position;
-                            IntVec3 jittered = building.Position;
-                            jittered = SomeJitter(destination);
-
-                            TeleportItem(cur, jittered, prcDebug);
-                            if (jittered != destination)
-                                gotSomeJitter = true;
-                        }
-                    break;
-            }
-
-            if (gotSomeJitter)
-                Messages.Message(buildingName + " got some jitter and missed its destination", this.parent, MessageTypeDefOf.TaskCompletion);
-
-            return true;
-        }
-        */
 
         private void StopCooldown()
         {
@@ -1168,10 +1045,38 @@ namespace LTF_Teleport
             }
         }
 
+        private static bool UnpoweredTp(Thing tpThing)
+        {
+            return ((tpThing.def.defName == "LTF_TpBed")
+                || (tpThing.def.defName == "LTF_TpBox")
+                || (tpThing.def.defName == "LTF_TpCatcher"));
+        }
+
+        private static bool IsTpSpot(Thing thing)
+        {
+            return (thing.def.defName == "LTF_TpSpot");
+        }
+
+        public static bool AtLeastOneTpSpot(Thing linkable1, Thing linkable2)
+        {
+            if (IsTpSpot(linkable1)
+                && UnpoweredTp(linkable2))
+                return true;
+
+            if (IsTpSpot(linkable2)
+                && UnpoweredTp(linkable1))
+                return true;
+
+            if (IsTpSpot(linkable1) && IsTpSpot(linkable2))
+                return true;
+
+            return false;
+        }
+
         public static string ValidTpSpot(Thing thing)
         {
             string Answer = string.Empty;
-            if (thing.def.defName != "LTF_TpSpot" && thing.def.defName != "LTF_TpCatcher")
+            if ( !UnpoweredTp(thing) && !IsTpSpot(thing) )
                 Answer = thing.Label + " is not a valid tp spot, it's a " + thing.def.label;
 
             return Answer;
@@ -2081,7 +1986,7 @@ namespace LTF_Teleport
             string tellMe = string.Empty;
             tellMe = Tools.OkStr(StatusReady) + "[" + TeleportCapable + "]" + buildingName + ": ";
 
-            Tools.Warn("power checking: " + requiresPower, prcDebug);
+            //Tools.Warn("power checking: " + requiresPower, prcDebug);
             if (requiresPower)
             {
                 // Power - Will return if status
@@ -2097,7 +2002,7 @@ namespace LTF_Teleport
                 }
             }
 
-            Tools.Warn("bench checking: " + requiresBench, prcDebug);
+            //Tools.Warn("bench checking: " + requiresBench, prcDebug);
             if (requiresBench)
             {
                 if (!benchManaged)
@@ -2137,11 +2042,11 @@ namespace LTF_Teleport
                 }
             }
 
-            Tools.Warn("dependencies checked: " + tellMe, prcDebug);
+            //Tools.Warn("dependencies checked: " + tellMe, prcDebug);
             //if(WarmUpProgress>10)
             CheckItems();
 
-            Tools.Warn("Items checked", prcDebug);
+            //Tools.Warn("Items checked", prcDebug);
             if (StatusChillin)
             {
                 tellMe += " Chillin;";
@@ -2162,13 +2067,15 @@ namespace LTF_Teleport
                 Tools.Warn(tellMe + " - TICK exit bc not ready: ", prcDebug);
                 return;
             }
-            Tools.Warn("stating we ready", prcDebug);
+
+            //Tools.Warn("stating we ready", prcDebug);
             if (IsLinked && StatusReady && compTwin.StatusReady)
             {
                 tellMe += "ready to tp " + "N:" + RegisteredCount + ":" + DumpList();
             }
 
-            Tools.Warn("checking if automatic", prcDebug);
+            //Tools.Warn("checking if automatic", prcDebug);
+
             // automatic ; no order yet ; ready
             if (
                     (IsLinked && AutomaticTeleportation ) && 
@@ -2197,10 +2104,10 @@ namespace LTF_Teleport
             }
             else
             {
-                Tools.Warn("no automatic order needed", prcDebug);
+                //Tools.Warn("no automatic order needed", prcDebug);
             }
 
-            Tools.Warn("TP order", prcDebug);
+            Tools.Warn("Got TP order", teleportOrder && prcDebug);
             if (teleportOrder)
             {
                 if (HasWarmUp)
@@ -2232,6 +2139,7 @@ namespace LTF_Teleport
                     {
                         tellMe += "Trying to TP";
                         bool didIt = false;
+                        //if (didIt = TryTeleport(prcDebug))
                         if (didIt = TryTeleport(prcDebug))
                         {
                             SoundDef.Named("LTF_TpSpotOut").PlayOneShotOnCamera(parent.Map);
@@ -2338,8 +2246,9 @@ namespace LTF_Teleport
                 //String myLabel = ((IsLinked) ? ("Unlink") : ("Right click with a colonist to link"));
                 String myDesc = (
                     (IsLinked) ?
-                    (' ' + LinkName + "->" + NextLinkName + "\nCurrent: " + Tools.PosStr(twin.Position)) :
-                    ("Right click with a colonist to link to another " + myDefName)
+                    (' ' + LinkName + "->" + NextLinkName + "\n"+
+                    "Current : " + twin.def.label +" "+ Tools.PosStr(twin.Position)) :
+                    ("Right click with a colonist and target another tp spot to link it with.")
                );
 
                 yield return new Command_Action
@@ -2583,7 +2492,7 @@ namespace LTF_Teleport
             }
             if (range > 0f)
             {
-                GenDraw.DrawRadiusRing(this.parent.Position, range / 2);
+                GenDraw.DrawRadiusRing(this.parent.Position, range);
             }
         }
     }

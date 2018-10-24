@@ -73,8 +73,11 @@ namespace LTF_Teleport
                     return;
                 }
 
-                if (thing.def.defName != "LTF_TpSpot" && thing.def.defName != "LTF_TpCatcher")
-                {
+                if (thing.def.defName != "LTF_TpSpot"
+                    && thing.def.defName != "LTF_TpCatcher"
+                    && thing.def.defName != "LTF_TpBed"
+                    && thing.def.defName != "LTF_TpBox"
+                    ) { 
                     Tools.Warn("slide show for tp spot only", true);
                     return;
                 }

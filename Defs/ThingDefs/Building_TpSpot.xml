@@ -116,7 +116,7 @@ Requires a teleport bench.</description>
 			<weightBase>35</weightBase>
 			<weightQualityFactor>20</weightQualityFactor>
 
-			<rangeBase>10</rangeBase>
+			<rangeBase>40</rangeBase>
 			<rangeQualityFactor>1.2</rangeQualityFactor>
 
 			<warmUpBase>300</warmUpBase>
@@ -125,7 +125,8 @@ Requires a teleport bench.</description>
 			<cooldownBase>1200</cooldownBase>
 			<cooldownQualityFactor>-120</cooldownQualityFactor>
 			
-			<missRangeBase>10</missRangeBase>
+			<!-- <missRangeBase>10</missRangeBase> -->
+			<missRangeBase>5</missRangeBase>
 			<missRangeQualityFactor>-1</missRangeQualityFactor>
 			<missChanceBase>2</missChanceBase>
 			<missChanceQualityFactor>.5</missChanceQualityFactor>
