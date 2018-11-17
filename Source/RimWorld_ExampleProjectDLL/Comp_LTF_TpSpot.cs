@@ -427,6 +427,43 @@ namespace LTF_Teleport
             Tools.Warn(DumpProps + " / " + DumpSettings, debug);
         }
 
+        private float StuffMultiplier(Thing thing)
+        {
+            if (thing == null)
+                return 1;
+
+            ThingDef myStuff = thing.Stuff;
+
+            StatDef armor_sharp = StatDefOf.StuffPower_Armor_Sharp;
+            StatDef armor_blunt = StatDefOf.StuffPower_Armor_Blunt;
+            StatDef damage_blunt = StatDefOf.BluntDamageMultiplier;
+            StatDef damage_sharp = StatDefOf.SharpDamageMultiplier;
+
+            StatDef stuffMass = StatDefOf.Mass;
+
+            float armSharp, armBlunt, dmgSharp, dmgBlunt, mass;
+
+            armSharp = myStuff.GetStatValueAbstract(armor_sharp);
+            armBlunt = myStuff.GetStatValueAbstract(armor_blunt);
+            dmgSharp = myStuff.GetStatValueAbstract(damage_sharp);
+            dmgBlunt = myStuff.GetStatValueAbstract(damage_blunt);
+
+            mass = myStuff.GetStatValueAbstract(stuffMass);
+
+            float answer = (0.5f + mass) * (armSharp + armBlunt + dmgSharp + dmgBlunt);
+
+            /*
+            Tools.Warn("stuff:" + thing.Stuff.defName +
+                " armBlunt:" + armBlunt +
+                " armSharp:" + armSharp +
+                " dmgSharp:" + dmgSharp +
+                " dmgBlunt:" + dmgBlunt +
+                " answer:" + answer,
+                true);
+                */
+            return answer;
+        }
+
         private void SetRange(CompQuality comp = null)
         {
             if (comp == null) if((comp = compQuality)==null) return;
@@ -438,6 +475,17 @@ namespace LTF_Teleport
             range += 3 * TwinWorstFacilityRange;
             range *= benchSynergy;
 
+            float mtp = StuffMultiplier(parent);
+
+            range *= mtp;
+
+            // Cannot draw radius ring of radius 140.7: not enough squares in the precalculated list.
+            //range = (range > GenRadial.MaxRadialPatternRadius) ? (GenRadial.MaxRadialPatternRadius) : range;
+
+            /*
+            Tools.Warn("stuff factor : " + mtp +
+                    "GenRadial.MaxRadialPatternRadius : "+ GenRadial.MaxRadialPatternRadius, true);
+                    */
             // unleashed
             //range = Tools.LimitRadius(range);
         }
@@ -2492,6 +2540,7 @@ namespace LTF_Teleport
             }
             if (range > 0f)
             {
+                if(range < GenRadial.MaxRadialPatternRadius)
                 GenDraw.DrawRadiusRing(this.parent.Position, range);
             }
         }
