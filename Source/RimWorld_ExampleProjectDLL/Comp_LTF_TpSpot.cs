@@ -732,6 +732,70 @@ namespace LTF_Teleport
             return answer;
         }
 
+        private void TeleportItem(Thing thing, IntVec3 destination, Map destinationMap, bool debug = false)
+        {
+            if (thing == null)
+            {
+                Tools.Warn("!!! thing == null", debug);
+                return;
+            }
+            if (destination == null)
+            {
+                Tools.Warn("!!! destination == null", debug);
+                return;
+            }
+            if(destinationMap == null)
+            {
+                Tools.Warn("!!! destinationMap == null", debug);
+                return;
+            }
+
+
+            if (thing.Position == destination)
+                Tools.Warn("!!! Trying to tp something where it already is", debug);
+
+            if (thing is Pawn pawn)
+            {
+                //Tools.Warn("Pawn moving :" + pawn.Name.ToStringShort, debug);
+                Tools.Warn("Pawn moving :" + pawn.ThingID, debug);
+
+                if (pawn.RaceProps.Animal)
+                {
+                    pawn.DeSpawn();
+                    GenSpawn.Spawn(pawn, destination, destinationMap);
+                    Tools.Warn("Pawn moved :" + pawn.ThingID, debug);
+                }
+                else
+                {
+                    if (pawn.IsColonist)
+                    {
+                        bool PastDraft = pawn.Drafted;
+                        pawn.drafter.Drafted = false;
+
+                        pawn.DeSpawn();
+                        GenSpawn.Spawn(pawn, destination, destinationMap);
+                        pawn.drafter.Drafted = PastDraft;
+                    }
+                    else
+                    {
+                        pawn.DeSpawn();
+                        GenSpawn.Spawn(pawn, destination, destinationMap);
+                    }
+
+                    Tools.Warn("Pawn moved :" + pawn.ThingID + " draft:" + pawn.Drafted, debug);
+                }
+
+            }
+            else
+            {
+                //thing.Position = destination;
+                //read only :( thing.Map = destinationMap;
+                thing.DeSpawn();
+                GenSpawn.Spawn(thing, destination, destinationMap);
+                Tools.Warn("thing moved :" + thing.LabelShort, debug);
+            }
+        }
+
         private void TeleportItem(Thing thing, IntVec3 destination, bool debug=false)
         {
             if (thing == null)
@@ -751,7 +815,7 @@ namespace LTF_Teleport
 
             if (thing is Pawn pawn)
             {
-                //Tools.Warn("Pawn moving :" + pawn.Name.ToStringShort, debug);
+                // pawn.Name.ToStringShort
                 Tools.Warn("Pawn moving :" + pawn.ThingID, debug);
 
                 if ( pawn.RaceProps.Animal )
@@ -841,7 +905,10 @@ namespace LTF_Teleport
                     twinJittered = SomeJitter(twinJittered);
                     TeleportItem(cur, twinJittered, debug);
                     */
-                    TeleportItem(cur, twinPos, debug);
+
+                    //TeleportItem(cur, twinPos, debug);
+                    TeleportItem(cur, twinPos, twin.Map ,debug);
+
                     /*
                     if (twinJittered != twinPos)
                         gotSomeJitter = true;
@@ -853,7 +920,9 @@ namespace LTF_Teleport
                     //myJittered = SomeJitter(myJittered);
                     // No jitter for now
                     //TeleportItem(cur, myJittered, debug);
-                    TeleportItem(cur, myPos, debug);
+
+                    //TeleportItem(cur, myPos, debug);
+                    TeleportItem(cur, myPos, myMap, debug);
 
                     /*
                     if (myJittered != myPos)
@@ -870,13 +939,11 @@ namespace LTF_Teleport
                     //twinJittered = SomeJitter(twinJittered);
                     // No jitter for now
                     //TeleportItem(cur, twinJittered, debug);
-                    TeleportItem(cur, twinPos, debug);
-                    
 
-                    /*
-                    if (twinJittered != twinPos)
-                        gotSomeJitter = true;
-                    */
+                    //TeleportItem(cur, twinPos, debug);
+                    TeleportItem(cur, twinPos, twin.Map, debug);
+
+                    //if (twinJittered != twinPos) gotSomeJitter = true;
                 }
             }
 

@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ModMetaData>
-	<name>Beam me up Scotty non steam</name>
+	<name>Beam me up Scotty</name>
 	<author>Gouda quiche</author>
 	<url>https://ludeon.com/forums/index.php?topic=37908</url>
-	<targetVersion>1.0.2059</targetVersion>
+	<supportedVersions>
+		<li>1.0</li>
+	</supportedVersions>
 	<description>Adds a teleport bench and its tiles to stand on.
 	
 More Faster Than Light in RimWorld:
