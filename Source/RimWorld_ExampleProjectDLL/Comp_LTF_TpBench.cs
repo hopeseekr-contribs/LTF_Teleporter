@@ -149,15 +149,7 @@ namespace LTF_Teleport
             }
             Scribe_Values.Look(ref GizmoIndex, "index");
         }
-        public void MindMineTick(Pawn masterMind)
-        {
-            workProgress += 1;
 
-            if (this.workProgress > workGoal)
-            {
-                mindcontrolEnabled = true;
-            }
-        }
         public bool MoreThanOne
         {
             get
@@ -269,16 +261,39 @@ namespace LTF_Teleport
             StringBuilder stringBuilder = new StringBuilder();
             String buffer = string.Empty;
 
-            stringBuilder.AppendLine("| Worktation logs |");
-            stringBuilder.AppendLine("+----------------+");
+            stringBuilder.AppendLine("| Workstation registry |");
+            stringBuilder.AppendLine("+-------------------------+");
+            if (!Registry.NullOrEmpty())
+                stringBuilder.AppendLine(">>> " + Registry.Count.ToString("D2") + " records."+"\n");
+            else
+                stringBuilder.AppendLine("Empty.");
 
             if (!Registry.NullOrEmpty())
             {
+                int i = 1;
                 foreach (Building cur in Registry)
                 {
-                    stringBuilder.AppendLine(cur.Label);
+                    string report = string.Empty;
+
+                    report = i.ToString("D2")+". " + cur.LabelShort + Tools.PosStr(cur.Position);
+                    
+                    Comp_LTF_TpSpot compSpot = cur?.TryGetComp<Comp_LTF_TpSpot>();
+                    if ((compSpot != null) && compSpot.IsLinked)
+                    {
+                        // " <=> "
+                        report += " " + compSpot.WayArrowLabeling  + " ";
+                        report += compSpot.twin.Label + Tools.PosStr(compSpot.twin.Position);
+                    }
+                    else
+                    {
+                        report += " Orphan spot!";
+                    }
+
+                    stringBuilder.AppendLine(report);
+                    i++;
                 }
             }
+
             Dialog_MessageBox window = new Dialog_MessageBox(stringBuilder.ToString(), null, null, null, null, null, false);
             Find.WindowStack.Add(window);
         }
@@ -300,9 +315,9 @@ namespace LTF_Teleport
         {
             string Answer = string.Empty;
             //Tools.WeightedCapacity(Props.facilityCapacityBase, Props.facilityCapacitySpectrum, compQuality);
-            Answer = "Registry capacity: " + FacilityCapacity;
-            Answer += "Range: " + range;
-            Answer += "Assist range: " + moreRange;
+            Answer = "Registry capacity: " + FacilityCapacity
+            + "\nRange: " + range
+            + "\nAssist range: " + moreRange;
 
             return Answer;
         }
@@ -357,6 +372,7 @@ namespace LTF_Teleport
         [DebuggerHidden]
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
+
             if (HasQuality)
             {
                 Texture2D qualityMat = ToolsGizmo.Quality2Mat(compQuality);
@@ -383,15 +399,16 @@ namespace LTF_Teleport
                     String myLabel = "Registry";
                     String Grammar = ((MoreThanOne) ? ("s") : (""));
                     String myDesc = Tools.CapacityString(Registry.Count, FacilityCapacity) + ' ' + TpSpotName + ".";
+
                     if (IsEmpty || IsFull)
                     {
-                        myDesc += " Registry is " + ((IsEmpty) ? ("empty") : ("full"));
+                        myDesc += ".Registry is " + ((IsEmpty) ? ("empty") : ("full"));
                         if (IsEmpty)
-                            myDesc += " It wont help managing any.";
+                            myDesc += "\nBuild a "+ TpSpotName + " in its range.";
                         if (IsFull)
-                            myDesc += " No additional " + TpSpotName + " will be managed.";
+                            myDesc += "\nNo additional " + TpSpotName + " will be managed.";
                     }
-                    myDesc += "\nLists " + Registry.Count + " remote space manipulator" + Grammar + ". ok teleporter" + Grammar + ".";
+                    myDesc += "\nLists " + Registry.Count + " teleporter" + Grammar;
                     yield return new Command_Action
                     {
                         icon = myMat,
@@ -412,21 +429,29 @@ namespace LTF_Teleport
                             Texture2D myGizmo = null;
 
                             //if (comp.StatusReady && comp.IsLinked && !comp.compTwin.StatusChillin)
+                            /*
                             if (comp.StatusReady && comp.IsLinked)
                                 myGizmo = comp.WayGizmoing;
                             else
                                 myGizmo = comp.IssueGizmoing;
+                            */
+                            myGizmo = comp.WayGizmoing;
 
-                            if(comp.compTwin.StatusChillin)
+                            if(comp.IsLinked)
+                            if (comp.compTwin.StatusChillin)
                                 myGizmo = comp.compTwin.IssueGizmoing;
 
                             String myLabel = "Cast "+WayName;
-                            String myDesc = comp.WayDescription + "\n" + comp.StatusLogNoUpdate;
-                            Action todo = ShowReport;
+                            String myDesc = comp.WayDescription;
+                            //+ "\n" + comp.StatusLogNoUpdate;
+                            //Action todo = ShowReport;
+                            Action todo = delegate
+                            {
+                                Tools.Warn("rip action on no way", prcDebug);
+                            };
 
                             if (comp.IsOrphan || comp.StatusChillin || comp.compTwin.StatusChillin)
                             {
-                                todo = ShowReport;
                                 if (comp.IsOrphan)
                                     myDesc = "Selected spot is orphan. You need to link it to another.";
                                 else if (comp.StatusChillin)
@@ -442,8 +467,11 @@ namespace LTF_Teleport
                             //todo = comp.OrderIn;
                             else if (comp.MyWay == Comp_LTF_TpSpot.Way.Swap)
                                 todo = comp.OrderSwap;
+
+                            /*
                             else if (comp.MyWay == Comp_LTF_TpSpot.Way.No)
                                 todo = ShowReport;
+                            */
 
                             yield return new Command_Action
                             {
@@ -459,10 +487,12 @@ namespace LTF_Teleport
                     else Tools.Warn("gizmo should not be this way", prcDebug);
                 }
 
+                Tools.Warn("Gizmo browse records", prcDebug);
                 if (MoreThanOne)
                 {
                     Texture2D myMat = MyGizmo.NextTpGz;
-                    String myLabel = Tools.CapacityString(GizmoIndex + 1, Registry.Count) + " - " + Tools.PosStr(CurrentSpot.Position);
+                    String myLabel = Tools.CapacityString(GizmoIndex + 1, Registry.Count) + 
+                            Tools.PosStr(CurrentSpot.Position);
                     //String Grammar = ((MoreThanOne) ? ("s") : (""));
                     String myDesc = "Browse " + Registry.Count + " records";
                     yield return new Command_Action
@@ -556,22 +586,9 @@ namespace LTF_Teleport
             if(Registry.NullOrEmpty())
                 return "Empty registry.";
 
-            string report = string.Empty;
-            string spotName = Registry.RandomElement().def.label;
-
-            report = ">"+Registry.Count+"<" + ' ' + spotName + ": ";
-            foreach (Building cur in Registry)
-            {
-                report += Tools.PosStr(cur.Position);
-            }
-            return report;
-            /*
-            string report = string.Empty;
-            foreach (Building cur in Registry)
-            {
-                report += ' '+cur.Label + "[" + cur.Position.x + ";" + cur.Position.z + "];";
-            }*/
+            return "Check registry(" + Registry.Count.ToString("D2") + " record" + ((MoreThanOne)?("s"):"") + ").";
         }
+
         public override void PostDrawExtraSelectionOverlays()
         {
             if (!Registry.NullOrEmpty())
@@ -580,7 +597,7 @@ namespace LTF_Teleport
             }
             if (range >0f)
             {
-                GenDraw.DrawRadiusRing(this.parent.Position, range/2);
+                GenDraw.DrawRadiusRing(this.parent.Position, (range/2)+1);
             }
         }
     }

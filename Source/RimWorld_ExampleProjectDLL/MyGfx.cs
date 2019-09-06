@@ -30,9 +30,11 @@ namespace LTF_Teleport
         public static string warningPath = overlayPath + "Warning/";
 
         // Underlay
-        public static readonly Material SomethingM = MaterialPool.MatFrom(underlayPath + "Something", ShaderDatabase.MoteGlow);
-        public static readonly Material NothingM = MaterialPool.MatFrom(underlayPath + "Nothing", ShaderDatabase.MoteGlow);
-        public static readonly Material NotReadyM = MaterialPool.MatFrom(underlayPath + "NotReady", ShaderDatabase.MoteGlow);
+        public static readonly Material WayOutM = MaterialPool.MatFrom(underlayPath + "WayOut", ShaderDatabase.MoteGlow);
+        public static readonly Material WayInM = MaterialPool.MatFrom(underlayPath + "WayIn", ShaderDatabase.MoteGlow);
+        public static readonly Material WaySwapM = MaterialPool.MatFrom(underlayPath + "WaySwap", ShaderDatabase.MoteGlow);
+        public static readonly Material InitOrderM = MaterialPool.MatFrom(underlayPath + "InitOrder", ShaderDatabase.MoteGlow);
+
         public static readonly Material UnderlayM = MaterialPool.MatFrom(underlayPath + "Underlay", ShaderDatabase.MoteGlow);
 
         // Warning
@@ -129,6 +131,7 @@ namespace LTF_Teleport
             Tools.Warn(checkIf, debug);
             return Answer;
         }
+        /*
         public static Material Status2UnderlayMaterial(Comp_LTF_TpSpot comp, bool debug = false)
         {
             Material Answer = null;
@@ -156,6 +159,33 @@ namespace LTF_Teleport
             }
 
             Tools.Warn(what+"null", debug);
+            return Answer;
+        }
+        */
+        public static Material Status2UnderlayMaterial(Comp_LTF_TpSpot comp, bool debug = false)
+        {
+            Material Answer = null;
+            string what = "Gfx - Under: ";
+
+            switch (comp.MyWay)
+            {
+                case Comp_LTF_TpSpot.Way.Out:
+                    Answer = WayOutM;
+                    break;
+                case Comp_LTF_TpSpot.Way.In:
+                    Answer = WayInM;
+                    break;
+                case Comp_LTF_TpSpot.Way.Swap:
+                    Answer = WaySwapM;
+                    break;
+                default:
+                    return null;
+            }
+
+            if (comp.TpSequenceBegin)
+                Answer = InitOrderM;
+
+            Tools.Warn(what + "null", debug);
             return Answer;
         }
 

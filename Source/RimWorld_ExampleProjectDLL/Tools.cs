@@ -83,7 +83,17 @@ namespace LTF_Teleport
         }
         public static int NextIndexRoundBrowser(int index, int count)
         {
-            return ((index == count - 1) ? (0) : (index + 1));
+            // only 1 item in registry, keep 0
+            // protection
+            if (count == 1)
+                return 0;
+
+            // upper limit
+            if ((index + 1) >= count)
+                return 0;
+
+            return (index+1);
+            //return ((index == count - 1) ? (0) : (index + 1));
         }
 
 

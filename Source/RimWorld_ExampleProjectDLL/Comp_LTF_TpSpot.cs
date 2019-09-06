@@ -29,10 +29,10 @@ namespace LTF_Teleport
         String myDefName = string.Empty;
         Map myMap = null;
 
-        string[] AutoLabel = { ", if bench triggered,", "automatically" };
+        string[] AutoLabel = { "If activated from workstation, ", "Automatically, " };
         string[] WayLabel = { "No way", "Tp out", "Tp in", "Swap" };
+        string[] WayArrow = { "(x)", " =>", "<= ", "<=>" };
         string[] WayActionLabel = { "do nothing", "send away", "bring back", "exchange" };
-        string TargetLabel = "what stands on";
 
         // definition
         public bool requiresPower = true;
@@ -206,10 +206,12 @@ namespace LTF_Teleport
             Answer += "\nRange: " + range;
             Answer += " - Weight capacity: " + weightCapacity;
 
+            /*
             Answer += "\nMiss chance: " + missChance.ToStringPercent("F0");
             Answer += " - offset: " + missRange;
             Answer += "\nFumble chance: " + fumbleChance.ToStringPercent("F0");
             Answer += " - offset: " + fumbleRange;
+            */
 
             Answer += "\nWorkstation synergy: " + benchSynergy;
 
@@ -346,10 +348,23 @@ namespace LTF_Teleport
         {
             get
             {
-                if ((int)MyWay > AutoLabel.Length - 1)
-                    return ("Auto labeling outbound");
 
-                return (AutoLabel[(int)MyWay]);
+                int boolToInt = ((AutomaticTeleportation) ? (1) : (0));
+
+                if ((int)boolToInt > AutoLabel.Length - 1)
+                    return ("Auto outbound");
+
+                return (AutoLabel[boolToInt]);
+            }
+        }
+        public string WayArrowLabeling
+        {
+            get
+            {
+                if ((int)MyWay > WayArrow.Length - 1)
+                    return ("Arrow outbound");
+
+                return (WayArrow[(int)MyWay]);
             }
         }
 
@@ -387,11 +402,12 @@ namespace LTF_Teleport
             get
             {
                 string Answer = string.Empty;
-                Answer += "will ";
-                Answer += WayActionLabeling + ' ';
-                Answer += AutoLabeling + ' ';
-                Answer += TargetLabel + ' ';
-                Answer += "this " + myDefName;
+
+                Answer += 
+                    AutoLabeling +
+                    "will " + WayActionLabeling + ' ' +
+                    "what stands on this " + myDefName;
+
                 if (IsLinked)
                 {
                     Answer += " and its twin.";
@@ -2077,7 +2093,8 @@ namespace LTF_Teleport
         {
             base.CompTick();
 
-            Tools.Warn(">>>TICK begin<<< " + buildingName, prcDebug);
+            //Tools.Warn(">>>TICK begin<<< " + buildingName, prcDebug);
+            Tools.Warn(">>>TICK begin<<< " + building.ThingID, prcDebug);
 
             Tools.Warn("Validated order:" +
             //" warmUp: " + Tools.CapacityString(warmUp, warmUpBase) +
@@ -2091,12 +2108,13 @@ namespace LTF_Teleport
                 return;
             }
 
+            /*
             if (IsOrphan)
             {
                 Tools.Warn("no need to comptick if not linked", prcDebug);
                 return;
             }
-                
+            */
 
             string tellMe = string.Empty;
             tellMe = Tools.OkStr(StatusReady) + "[" + TeleportCapable + "]" + buildingName + ": ";
@@ -2155,6 +2173,12 @@ namespace LTF_Teleport
                     ResetFacility();
                     return;
                 }
+            }
+
+            if (IsOrphan)
+            {
+                Tools.Warn("no need to comptick if not linked", prcDebug);
+                return;
             }
 
             //Tools.Warn("dependencies checked: " + tellMe, prcDebug);
@@ -2348,34 +2372,44 @@ namespace LTF_Teleport
             }
 
             // Link or not
+            //if (ToolsBuilding.ValidLink(MyLink))
+            ////("Right click with a colonist and target another tp spot to link it with.")
+            /////' ' + LinkName + "->" + NextLinkName + "\n" +
+            //if (IsLinked)
+
             if (ToolsBuilding.ValidLink(MyLink))
             {
-
                 String LinkName = LinkNaming;
                 //int NextIndex = (int)((IsLinked) ? (ToolsBuilding.Link.Orphan) : (ToolsBuilding.Link.Linked));
                 String NextLinkName = NextLinkNaming;
 
                 Texture2D myGizmo = ((IsLinked) ? (MyGizmo.LinkedGz) : (MyGizmo.OrphanGz));
                 String myLabel = "Unlink";
+                String myDesc = "Right click with a colonist to link to another tp spot.";
+                Action todo = delegate { Tools.Warn("nothing link gizmo", prcDebug);  };
 
                 //String myLabel = ((IsLinked) ? ("Unlink") : ("Right click with a colonist to link"));
-                String myDesc = (
-                    (IsLinked) ?
-                    (' ' + LinkName + "->" + NextLinkName + "\n"+
-                    "Current : " + twin.def.label +" "+ Tools.PosStr(twin.Position)) :
-                    ("Right click with a colonist and target another tp spot to link it with.")
-               );
+                if (IsLinked)
+                {
+                    myLabel = "Unlink";
+                    myDesc = (
+                        "Linked with " + twin.def.label + "\n" +
+                        Tools.PosStr(building.Position) + " " + WayArrowLabeling + " " + Tools.PosStr(twin.Position) +
+                        "\nClick to unlink."
+                    );
+                    todo = new Action(UnlinkMe);
+                }
 
                 yield return new Command_Action
                 {
                     icon = myGizmo,
                     defaultLabel = myLabel,
                     defaultDesc = myDesc,
-                    action = new Action(UnlinkMe)
+                    action = todo
                 };
             }
 
-            if (requiresPower && HasPower)// && !StatusNoFacility)
+            if (requiresPower && HasPower && IsLinked)// && !StatusNoFacility)
             {
                 // Way to teleport
                 if (ValidWay)
@@ -2387,8 +2421,9 @@ namespace LTF_Teleport
 
                     //((Auto) ? (MyGizmo.AutoOnGz) : (MyGizmo.AutoOffGz));
                     String myLabel = "browse ways";
-                    String myDesc = WayName + " -> " + NextWayNaming +
-                        "\ncurrent action: " + WayDescription;
+                    String myDesc = "Current : " + WayName;
+                    myDesc += "\nClick to change to " + NextWayNaming;
+                        
                     yield return new Command_Action
                     {
                         icon = myGizmo,
@@ -2409,8 +2444,10 @@ namespace LTF_Teleport
                     String ComplementaryAutoName = ((!AutomaticTeleportation) ? ("Automatic") : ("Manual"));
 
                     Texture2D myGizmo = ((AutomaticTeleportation) ? (MyGizmo.AutoOnGz) : (MyGizmo.AutoOffGz));
-                    String myLabel = "toggle";
-                    String myDesc = AutoName + " -> " + ComplementaryAutoName;
+                    String myLabel = "set automatic";
+                    String myDesc = "Current : " + AutoName;
+                    myDesc += "\nClick to change to "+ ComplementaryAutoName;
+
                     yield return new Command_Action
                     {
                         icon = myGizmo,
