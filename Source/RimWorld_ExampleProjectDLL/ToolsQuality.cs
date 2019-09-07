@@ -137,7 +137,7 @@ namespace LTF_Teleport
         {
             if (comp == null)
             {
-                Tools.Warn("no qualit comp found", debug);
+                Tools.Warn("no quality comp found, ret="+capacityBase, debug);
                 return (capacityBase);
             }
             if(opposite && round){
@@ -173,6 +173,7 @@ namespace LTF_Teleport
                 answer = Mathf.RoundToInt(answer);
             }
 
+            Tools.Warn("factor capacity, ret=" + capacityBase, debug);
             return (answer);
         }
 

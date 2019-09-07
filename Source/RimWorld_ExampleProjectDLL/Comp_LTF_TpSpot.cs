@@ -46,6 +46,7 @@ namespace LTF_Teleport
 
         public enum Way { No = 0, Out = 1, In = 2, Swap = 3 };
         Texture2D[] WayGizmo = { MyGizmo.WayNoGz, MyGizmo.WayOutGz, MyGizmo.WayInGz, MyGizmo.WaySwapGz };
+        SimpleColor[] WayColor = { SimpleColor.White, SimpleColor.Red, SimpleColor.Cyan, SimpleColor.Magenta };
 
         public Building twin = null;
         public ToolsBuilding.Link MyLink = ToolsBuilding.Link.Orphan;
@@ -203,8 +204,8 @@ namespace LTF_Teleport
             //Answer = "Warmup: " + Tools.Ticks2Str(warmUpBase);
             Answer = "Warmup: " + Tools.Ticks2Str(warmUpCalculated);
             Answer += " - Cooldown: " + Tools.Ticks2Str(cooldownBase);
-            Answer += "\nRange: " + range;
-            Answer += " - Weight capacity: " + weightCapacity;
+            Answer += "\nRange: " + (int)range;
+            Answer += " - Weight max: " + weightCapacity + "kg";
 
             /*
             Answer += "\nMiss chance: " + missChance.ToStringPercent("F0");
@@ -213,7 +214,7 @@ namespace LTF_Teleport
             Answer += " - offset: " + fumbleRange;
             */
 
-            Answer += "\nWorkstation synergy: " + benchSynergy;
+            //Answer += "\nWorkstation synergy: " + benchSynergy;
 
             return Answer;
         }
@@ -367,6 +368,17 @@ namespace LTF_Teleport
                 return (WayArrow[(int)MyWay]);
             }
         }
+        public SimpleColor WayColoring
+        {
+            get
+            {
+                if ((int)MyWay > WayColor.Length - 1)
+                    return (SimpleColor.White);
+                    //return ("Color outbound");
+
+                return (WayColor[(int)MyWay]);
+            }
+        }
 
         public ToolsBuilding.Link NextLink
         {
@@ -487,23 +499,19 @@ namespace LTF_Teleport
             range = ToolsQuality.FactorCapacity(Props.rangeBase, Props.rangeQualityFactor, comp, false, true, false, prcDebug);
             // facility quality factor
             //if (requiresBench)
-            
+
+            //Log.Warning(building.ThingID + "range base:" + range);
+
             range += 3 * TwinWorstFacilityRange;
+            //Log.Warning(building.ThingID + "twin worst facility range:" + TwinWorstFacilityRange);
             range *= benchSynergy;
+            //Log.Warning("bench synergy:" + benchSynergy);
 
             float mtp = StuffMultiplier(parent);
-
             range *= mtp;
+            //Log.Warning(building.ThingID + " mtp:" + mtp);
+            //Log.Warning(building.ThingID +" "+building.Label +" range final:" + range);
 
-            // Cannot draw radius ring of radius 140.7: not enough squares in the precalculated list.
-            //range = (range > GenRadial.MaxRadialPatternRadius) ? (GenRadial.MaxRadialPatternRadius) : range;
-
-            /*
-            Tools.Warn("stuff factor : " + mtp +
-                    "GenRadial.MaxRadialPatternRadius : "+ GenRadial.MaxRadialPatternRadius, true);
-                    */
-            // unleashed
-            //range = Tools.LimitRadius(range);
         }
         private void SetWarmUpBase(CompQuality comp = null)
         {
@@ -536,6 +544,8 @@ namespace LTF_Teleport
 
             // correct current cooldown if too high for capacity
             currentCooldown = Mathf.Min(cooldownBase, currentCooldown);
+
+            //MTP
         }
         private void SetBenchSynergy(CompQuality comp = null)
         {
@@ -712,23 +722,7 @@ namespace LTF_Teleport
 
             WorkstationOrder(prcDebug);
             BeginTeleportItemAnimSeq();
-            /*
-            OrderOut();
-            compTwin.OrderOut();
-            */
         }
-            /*
-            public void OrderSwap()
-            {
-                WorkstationOrder(prcDebug);
-
-                SetBeginAnimLength();
-                source = true;
-                destination = false;
-                compTwin.source = true;
-                compTwin.destination = false;
-            }
-            */
 
         public IntVec3 SomeJitter(IntVec3 destination, bool debug=false) {
             IntVec3 answer = destination;
@@ -985,6 +979,12 @@ namespace LTF_Teleport
         private void SetCooldown()
         {
             currentCooldown = cooldownBase * (.5f + .5f * (.3f * currentWeight / weightCapacity + .7f * orderRange / TwinBestRange));
+
+            /*
+            float mtp = StuffMultiplier(parent) / 2;
+            if (mtp < 1) mtp = 1;
+            currentCooldown /= mtp;
+            */
         }
         /*
         private void SetWarmUp()
@@ -1004,6 +1004,13 @@ namespace LTF_Teleport
             }
             else
                 warmUpCalculated = warmUpBase;
+            /*
+            float mtp = StuffMultiplier(parent) / 3;
+            warmUpCalculated =  warmUpCalculated - (int)mtp;
+
+            if (warmUpCalculated < 2)
+                warmUpCalculated = 2;
+            */
         }
 
         private void SetWarmUpLeft()
@@ -1086,10 +1093,16 @@ namespace LTF_Teleport
                 if (!requiresBench)
                 {
                     // spot facility
-                    if (IsLinked && compTwin.HasRegisteredFacility)
-                        answer = compBench.moreRange;
+                    if (IsLinked && compTwin.requiresBench && compTwin.HasRegisteredFacility)
+                    {
+                        answer = compTwin.compBench.moreRange;
+                        //Log.Warning(building.ThingID + " catcher found linked spot facility more range =" + answer);
+                    }
                     else
+                    {
                         answer = 0;
+                        //Log.Warning(building.ThingID + " catcher did not twin or facility");
+                    }
                 }
                 //spot
                 else
@@ -1099,22 +1112,41 @@ namespace LTF_Teleport
                         if (HasRegisteredFacility)
                         {
                             float myFacilityR = compBench.moreRange;
-                            float twinFacilityR = (compTwin.requiresBench && compTwin.HasRegisteredFacility) ? compTwin.compBench.moreRange : 0;
-                            answer = Mathf.Min(myFacilityR, twinFacilityR);
+                            if ((!compTwin.requiresBench) || (!compTwin.HasRegisteredFacility))
+                            {
+                                answer = myFacilityR;
+                            }
+                            else
+                            {
+                                float twinFacilityR = (compTwin.requiresBench && compTwin.HasRegisteredFacility) ? compTwin.compBench.moreRange : 0;
+                                answer = Mathf.Max(myFacilityR, twinFacilityR);
+                            }
+                            //Log.Warning(building.ThingID + " spot found linked spot facility more range =" + answer);
                         }
                         else
+                        {
                             answer = 0;
+                            //Log.Warning(building.ThingID + " spot did not find linked spot facility more range =" + answer);
+                        }
+                            
                     }
                     else
                     {
                         if (HasRegisteredFacility)
+                        {
                             answer = compBench.moreRange;
+                            //Log.Warning(building.ThingID + " spot found facility more range =" + answer);
+                        }
                         else
+                        {
                             answer = 0;
+                            //Log.Warning(building.ThingID + " spot did not find facility more range =" + answer);
+                        }
+
                     }
                 }
                 //"Not enough squares to get to radius 64.72919.Max is 56.40036"
-                answer = Tools.LimitToRange(answer, 0, 54);
+                //answer = Tools.LimitToRange(answer, 0, 54);
 
                 return answer;
             }
@@ -2638,14 +2670,18 @@ namespace LTF_Teleport
 
         public override void PostDrawExtraSelectionOverlays()
         {
+            // Flickering line between spot and twin
             if (IsLinked)
             {
-                GenDraw.DrawLineBetween(this.parent.TrueCenter(), twin.TrueCenter(), SimpleColor.Cyan);
+                GenDraw.DrawLineBetween(this.parent.TrueCenter(), twin.TrueCenter(), WayColoring);
             }
+
             if (range > 0f)
             {
-                if(range < GenRadial.MaxRadialPatternRadius)
-                GenDraw.DrawRadiusRing(this.parent.Position, range);
+                // if tpspot range drawable, then draw it
+                // Cannot draw radius ring of radius 140.7: not enough squares in the precalculated list.
+                if (range < GenRadial.MaxRadialPatternRadius)
+                    GenDraw.DrawRadiusRing(this.parent.Position, range);
             }
         }
     }

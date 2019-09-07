@@ -80,9 +80,11 @@ State your orders and schedule strategic wanderings.</description>
 			<li><compClass>CompQuality</compClass></li>
 			
 			<li Class="CompProperties_Facility">
+				<!--
 				<statOffsets>
 					<MarketValue>0.25</MarketValue>
 				</statOffsets>
+				-->
 				<maxSimultaneous>1</maxSimultaneous>
 				<maxDistance>5</maxDistance>
 			</li>
@@ -97,7 +99,7 @@ State your orders and schedule strategic wanderings.</description>
 				<FacilityCapacitySpectrum>1</FacilityCapacitySpectrum>
 				<FacilityCapacityBase>12</FacilityCapacityBase>
 				<moreRange>1</moreRange>
-				<moreRangeBase>12</moreRangeBase>
+				<moreRangeBase>5</moreRangeBase>
 			</li>
 			
 		</comps>

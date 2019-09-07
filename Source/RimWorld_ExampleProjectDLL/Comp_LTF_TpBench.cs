@@ -55,59 +55,6 @@ namespace LTF_Teleport
                 return (CompProperties_TpBench)props;
             }
         }
-        public override void PostDraw()
-        {
-            base.PostDraw();
-
-            if (!GotThePower)
-            {
-                Tools.Warn("no power no overlay", false);
-                return;
-            }
-
-            Vector3 benchPos = this.parent.DrawPos;
-            if (benchPos == null)
-            {
-                Tools.Warn("null bench pos draw", prcDebug);
-                return;
-            }
-            // higher than ground to be visible ; maybe too high ?
-            benchPos.y += 4;
-
-            float progressSize = (ProgressToRegister > 1f) ? (1f) : (ProgressToRegister * 1.5f);
-
-            //if (mindcontrolEnabled)
-            //DrawPulse((Thing)parent, Gfx.readyMat, benchPos);
-
-            /*
-            if (!IsWorkDone)
-            {
-
-            }
-            */
-
-            // work progress bars
-            /*
-            int neededWorkBarN = Mathf.RoundToInt(ProgressToRegister * Gfx.workBarNum);
-            if (neededWorkBarN > 1)
-            {
-                if (neededWorkBarN > Gfx.workBarNum) neededWorkBarN = Gfx.workBarNum;
-
-                for (int i = 1; i < neededWorkBarN + 1; i++)
-                {
-                    Gfx.DrawBar(benchPos, -1.5f, .12f, i);
-                }
-            }
-            */
-        }
-        // progress in work
-        public float ProgressToRegister
-        {
-            get
-            {
-                return workProgress / workGoal;
-            }
-        }
 
         // get power comp
         public override void PostSpawnSetup(bool respawningAfterLoad)
@@ -122,6 +69,7 @@ namespace LTF_Teleport
             compQuality = building?.TryGetComp<CompQuality>();
             compFacility = building?.TryGetComp<CompFacility>();
             range = compFacility?.Props.maxDistance ?? 0f;
+            SetMoreRange();
 
             WeightFacilityCapacity(compQuality);
         }
@@ -136,7 +84,9 @@ namespace LTF_Teleport
         private void SetMoreRange(CompQuality comp = null)
         {
             if (comp == null) if ((comp = compQuality) == null) return;
-            moreRange = ToolsQuality.FactorCapacity(Props.moreRangeBase, Props.moreRange, comp, false, false, false, prcDebug);
+
+            //moreRange = ToolsQuality.FactorCapacity(Props.moreRangeBase, Props.moreRange, comp, false, false, false, prcDebug);
+            moreRange = ToolsQuality.FactorCapacity(Props.moreRangeBase, Props.moreRange, comp, false, false, false, true);
         }
 
         public override void PostExposeData()
@@ -591,11 +541,33 @@ namespace LTF_Teleport
 
         public override void PostDrawExtraSelectionOverlays()
         {
+            // Drawer lines between workstations and tp spot
+            /*
             if (!Registry.NullOrEmpty())
             {
                 GenDraw.DrawLineBetween(this.parent.TrueCenter(), CurrentSpot.TrueCenter(), SimpleColor.Cyan);
             }
-            if (range >0f)
+            */
+
+            if (HasSpot)
+            {
+                Comp_LTF_TpSpot comp_LTF_TpSpot = CurrentSpot?.TryGetComp<Comp_LTF_TpSpot>();
+
+                if (comp_LTF_TpSpot != null)
+                {
+                    // Line from workstation to spot (in range)
+                    GenDraw.DrawLineBetween(this.parent.TrueCenter(), CurrentSpot.TrueCenter(), comp_LTF_TpSpot.WayColoring);
+                    if (comp_LTF_TpSpot.IsLinked)
+                    {
+                        // Line from spot to spot
+                        GenDraw.DrawLineBetween(CurrentSpot.TrueCenter(), comp_LTF_TpSpot.twin.TrueCenter(), comp_LTF_TpSpot.WayColoring);
+                        // Wish we could make it more noticeable
+                    }
+                }
+            }
+
+            // Draw range circle
+            if (range > 0f)
             {
                 GenDraw.DrawRadiusRing(this.parent.Position, (range/2)+1);
             }
