@@ -2,20 +2,18 @@
 <Defs>
 
 	<ThingDef ParentName="BuildingBase">
-		<defName>LTF_TpBench</defName>
-		<label>Teleport workstation</label>
+		<defName>LTF_MiniStation</defName>
+		<label>Teleport ministation</label>
 		<thingClass>Building_WorkTable</thingClass>
 
 		<graphicData>
-			<texPath>Things/Building/TpBench/TpBench</texPath>
-			<!-- <graphicClass>Graphic_Multi</graphicClass> -->
-			<graphicClass>Graphic_Multi</graphicClass>
+			<texPath>Things/Building/MiniStation/MiniStation</texPath>
+			<graphicClass>Graphic_Single</graphicClass>
 			<shaderType>CutoutComplex</shaderType>
-			<drawSize>(3.5,2.5)</drawSize>
+			<drawSize>(1,1)</drawSize>
 		</graphicData>
 
-		<!-- <rotatable>true</rotatable> -->
-		<defaultPlacingRot>North</defaultPlacingRot>
+		<rotatable>false</rotatable>
 		
 		<altitudeLayer>Building</altitudeLayer>
 		<passability>PassThroughOnly</passability>
@@ -34,7 +32,7 @@
 		
 		<statBases>
 			<!--<MarketValue>3000</MarketValue>-->
-			<WorkToBuild>15000</WorkToBuild>
+			<WorkToBuild>10000</WorkToBuild>
 			<MaxHitPoints>250</MaxHitPoints>
 			<Flammability>1.0</Flammability>
 			<Mass>150</Mass>
@@ -42,13 +40,12 @@
 		
 		<tickerType>Normal</tickerType>
 
-		<description>A power consumptive workstation.
+		<description>A mini workstation.
 - Requires at least 1 teleport spot.
 State your orders and schedule strategic wanderings.</description>
-		<size>(3,1)</size>
+		<size>(1,1)</size>
 		<designationCategory>Security</designationCategory>
-		<hasInteractionCell>true</hasInteractionCell>
-		<interactionCellOffset>(0,0,-1)</interactionCellOffset>
+		<hasInteractionCell>false</hasInteractionCell>
 		
 		<building>
 			<ai_chillDestination>false</ai_chillDestination>
@@ -58,11 +55,11 @@ State your orders and schedule strategic wanderings.</description>
 			<li>Metallic</li>
 		</stuffCategories>
 		
-		<costStuffCount>200</costStuffCount>
+		<costStuffCount>150</costStuffCount>
 		<costList>
 			<Steel>50</Steel>
-			<Uranium>20</Uranium>
-			<ComponentIndustrial>5</ComponentIndustrial>
+			<Uranium>10</Uranium>
+			<ComponentIndustrial>3</ComponentIndustrial>
 		</costList>
 		
 		<comps>
@@ -73,7 +70,7 @@ State your orders and schedule strategic wanderings.</description>
 			
 			<li Class="CompProperties_Power">
 				<compClass>CompPowerTrader</compClass>
-				<basePowerConsumption>250</basePowerConsumption>
+				<basePowerConsumption>200</basePowerConsumption>
 				<!-- <startElectricalFires>true</startElectricalFires> -->
 			</li>
 			<li Class="CompProperties_Flickable"/>
@@ -81,10 +78,10 @@ State your orders and schedule strategic wanderings.</description>
 			
 			<li Class="CompProperties_Facility">
 				<maxSimultaneous>1</maxSimultaneous>
-				<maxDistance>5</maxDistance>
+				<maxDistance>4</maxDistance>
 			</li>
 			<li Class="CompProperties_Glower">
-				<glowRadius>5</glowRadius>
+				<glowRadius>3</glowRadius>
 				<!-- pink -->
 				<glowColor>(60,200,100,0)</glowColor>
 			</li>
@@ -92,7 +89,7 @@ State your orders and schedule strategic wanderings.</description>
 			<!-- Main -->
 			<li Class="LTF_Teleport.CompProperties_TpBench">
 				<FacilityCapacitySpectrum>1</FacilityCapacitySpectrum>
-				<FacilityCapacityBase>12</FacilityCapacityBase>
+				<FacilityCapacityBase>4</FacilityCapacityBase>
 				<moreRange>1</moreRange>
 				<moreRangeBase>5</moreRangeBase>
 			</li>

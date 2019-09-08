@@ -4,7 +4,7 @@
 	<!-- <ThingDef ParentName="BuildingBase"> -->
 	<ThingDef ParentName="FurnitureWithQualityBase">
     <defName>LTF_TpBox</defName>
-    <label>tp box</label>
+    <label>Teleport box</label>
     <description>A structure made to teleport incapacitated animals. Must be associated with a Teleport spot.</description>
     
 	<thingClass>Building_Bed</thingClass>

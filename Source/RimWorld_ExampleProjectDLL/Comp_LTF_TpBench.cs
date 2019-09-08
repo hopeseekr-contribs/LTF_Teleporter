@@ -35,14 +35,9 @@ namespace LTF_Teleport
 
         private List<Building> Registry = new List<Building>();
 
-        private const float defaultWorkAmount = 3600f; // 120sec = 60  * 120 = 7200 
-        private float workGoal = defaultWorkAmount;
-        private float workProgress = 0;
         // reach spots
         public float range = 0f;
         public float moreRange = 0f;
-        private bool mindcontrolEnabled = false;
-        //bool mindReachable = false;
 
         bool prcDebug = false;
         bool gfxDebug = false;
@@ -81,6 +76,15 @@ namespace LTF_Teleport
             this.ResetCurrentTarget();
         }
         */
+
+        private bool IsMiniStation
+        {
+            get
+            {
+                return (building.def.defName == "LTF_MiniStation");
+            }
+        }
+
         private void SetMoreRange(CompQuality comp = null)
         {
             if (comp == null) if ((comp = compQuality) == null) return;
@@ -167,23 +171,6 @@ namespace LTF_Teleport
 
         }
 
-        public void InitWork()
-        {
-            workProgress = 0;
-        }
-
-        public void ResetProgress()
-        {
-            workProgress = 0;
-            mindcontrolEnabled = false;
-        }
-        public bool IsWorkDone
-        {
-            get
-            {
-                return (mindcontrolEnabled);
-            }
-        }
         public bool GotThePower
         {
             get
@@ -548,7 +535,15 @@ namespace LTF_Teleport
             // Draw range circle
             if (range > 0f)
             {
-                GenDraw.DrawRadiusRing(this.parent.Position, (range / 2) + 1);
+                float CircleRadius = 0f;
+
+                //CircleRadius = ((IsMiniStation)?():());
+                if (IsMiniStation)
+                    CircleRadius = 1;
+                else
+                    CircleRadius = (range / 2) + 1;
+
+                GenDraw.DrawRadiusRing(this.parent.Position, CircleRadius);
             }
 
             // Not drawing if bench is empty or has no power

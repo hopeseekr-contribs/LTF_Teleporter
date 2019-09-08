@@ -2,7 +2,7 @@
 <Defs>
   <ThingDef ParentName="BedWithQualityBase">
     <defName>LTF_TpBed</defName>
-    <label>tp bed</label>
+    <label>Teleport bed</label>
     <description>A structure made to teleport incapacitated humans. Must be associated with a Teleport spot.</description>
     <graphicData>
       <texPath>Things/Building/TpBed/TpBed</texPath>

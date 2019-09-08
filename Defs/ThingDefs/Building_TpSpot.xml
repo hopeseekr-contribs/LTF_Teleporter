@@ -109,6 +109,7 @@ Requires a teleport bench.</description>
 		<li Class="CompProperties_AffectedByFacilities">
 			<linkableFacilities>
 				<li>LTF_TpBench</li>
+				<li>LTF_MiniStation</li>
 			</linkableFacilities>
 		</li>
     

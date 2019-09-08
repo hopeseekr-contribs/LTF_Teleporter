@@ -4,7 +4,7 @@
 	<!-- <ThingDef ParentName="BuildingBase"> -->
 	<ThingDef ParentName="FurnitureWithQualityBase">
     <defName>LTF_TpCatcher</defName>
-    <label>catcher</label>
+    <label>Teleport catcher</label>
     <description>A wooden structure serving as a teleport vector. Must be associated with a Teleport spot.</description>
     <!-- <thingClass>Building_WorkTable</thingClass> -->
 	<thingClass>Building_Storage</thingClass>
