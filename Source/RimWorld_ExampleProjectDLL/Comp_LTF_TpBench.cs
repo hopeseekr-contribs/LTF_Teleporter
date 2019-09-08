@@ -85,8 +85,8 @@ namespace LTF_Teleport
         {
             if (comp == null) if ((comp = compQuality) == null) return;
 
-            //moreRange = ToolsQuality.FactorCapacity(Props.moreRangeBase, Props.moreRange, comp, false, false, false, prcDebug);
-            moreRange = ToolsQuality.FactorCapacity(Props.moreRangeBase, Props.moreRange, comp, false, false, false, true);
+            moreRange = ToolsQuality.FactorCapacity(Props.moreRangeBase, Props.moreRange, comp, false, false, false, prcDebug);
+            //moreRange = ToolsQuality.FactorCapacity(Props.moreRangeBase, Props.moreRange, comp, false, false, false, true);
         }
 
         public override void PostExposeData()
@@ -133,6 +133,9 @@ namespace LTF_Teleport
         {
             get
             {
+                if (GizmoIndex >= Registry.Count)
+                    return null;
+
                 return Registry[GizmoIndex];
             }
         }
@@ -541,35 +544,35 @@ namespace LTF_Teleport
 
         public override void PostDrawExtraSelectionOverlays()
         {
-            // Drawer lines between workstations and tp spot
-            /*
-            if (!Registry.NullOrEmpty())
-            {
-                GenDraw.DrawLineBetween(this.parent.TrueCenter(), CurrentSpot.TrueCenter(), SimpleColor.Cyan);
-            }
-            */
-
-            if (HasSpot)
-            {
-                Comp_LTF_TpSpot comp_LTF_TpSpot = CurrentSpot?.TryGetComp<Comp_LTF_TpSpot>();
-
-                if (comp_LTF_TpSpot != null)
-                {
-                    // Line from workstation to spot (in range)
-                    GenDraw.DrawLineBetween(this.parent.TrueCenter(), CurrentSpot.TrueCenter(), comp_LTF_TpSpot.WayColoring);
-                    if (comp_LTF_TpSpot.IsLinked)
-                    {
-                        // Line from spot to spot
-                        GenDraw.DrawLineBetween(CurrentSpot.TrueCenter(), comp_LTF_TpSpot.twin.TrueCenter(), comp_LTF_TpSpot.WayColoring);
-                        // Wish we could make it more noticeable
-                    }
-                }
-            }
 
             // Draw range circle
             if (range > 0f)
             {
-                GenDraw.DrawRadiusRing(this.parent.Position, (range/2)+1);
+                GenDraw.DrawRadiusRing(this.parent.Position, (range / 2) + 1);
+            }
+
+            // Not drawing if bench is empty or has no power
+            if ((Registry.NullOrEmpty()) || (!GotThePower))
+                return;
+
+            // selected spot comp
+            Comp_LTF_TpSpot comp = CurrentSpot?.TryGetComp<Comp_LTF_TpSpot>();
+            if (comp == null)
+                return;
+
+            // not drawing lines with spot without power/facility
+            if ((comp.requiresPower && !comp.HasPower))
+                return;
+            if ((comp.requiresBench && !comp.HasPoweredFacility))
+                return;
+
+            // Line from workstation to spot (in range)
+            GenDraw.DrawLineBetween(this.parent.TrueCenter(), CurrentSpot.TrueCenter(), comp.WayColoring);
+            if (comp.IsLinked)
+            {
+                // Line from spot to spot
+                GenDraw.DrawLineBetween(CurrentSpot.TrueCenter(), comp.twin.TrueCenter(), comp.WayColoring);
+                // Wish we could make it more noticeable
             }
         }
     }
