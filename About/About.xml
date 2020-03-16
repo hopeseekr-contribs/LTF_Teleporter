@@ -10,6 +10,31 @@
 	<packageId>goudaquiche.teleporter.src</packageId>
 	<description>Adds a teleport bench and its tiles to stand on.
 	
+Buildings :
+	- Tp workstation : at least 1 is needed. It will give orders to tp spots.
+	- Mini station : smaller workstation.
+	- Tp spot : build it close to the workstation and choose the way it works. It is also a storage, meaning you can prioritize what pawns will put on it. You can choose to automate teleportation and the way it goes : in, out, swap.
+	- Tp catcher : cheap wooden building that you can link to a tp spot. It is a storage. A pawn or any object standing on it will be teleported.
+	- Tp bed : cheap building that allows to teleport wounded, incapacitated or captured pawns.
+	- Tp box : same but for animals.
+
+Howto :
+	- Build tp workstation (power required)
+	- Build tp spot in workstation range (power required)
+	- Build tp catcher
+	- Link the tp spot to the tp catcher with a colonist
+	- Select tp spot, choose the way the spot teleports.
+	- Select workstation to start it up. You can browse different tp spots within range.
+	- Cast teleportation with workstation. Alternatively, you can choose to teleport automatically.
+
+Travel between maps :
+	- Link the spots before you travel.
+	- Uninstall the spot that does not require power.
+	- Carry the spot in caravan.
+	- Reinstall.
+	- ???
+	- Profit.
+
 More Faster Than Light in RimWorld:
 	- Clone Bay
 	- Crystal
