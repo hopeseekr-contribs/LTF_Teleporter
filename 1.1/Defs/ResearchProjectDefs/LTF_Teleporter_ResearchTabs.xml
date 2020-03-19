@@ -5,7 +5,7 @@
 	
 	<ResearchTabDef>
 		<defName>LTFTeleporter</defName>
-		<label>Lighter Than Fast - Teleporter</label>
+		<label>LTF - Teleporter</label>
 	</ResearchTabDef>
 
 </Defs>
