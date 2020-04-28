@@ -167,15 +167,15 @@ namespace LTF_Teleport
             Material Answer = null;
             string what = "Gfx - Under: ";
 
-            switch (comp.MyWay)
+            switch (comp.myWay)
             {
-                case Comp_LTF_TpSpot.Way.Out:
+                case MyWay.Way.Out:
                     Answer = WayOutM;
                     break;
-                case Comp_LTF_TpSpot.Way.In:
+                case MyWay.Way.In:
                     Answer = WayInM;
                     break;
-                case Comp_LTF_TpSpot.Way.Swap:
+                case MyWay.Way.Swap:
                     Answer = WaySwapM;
                     break;
                 default:

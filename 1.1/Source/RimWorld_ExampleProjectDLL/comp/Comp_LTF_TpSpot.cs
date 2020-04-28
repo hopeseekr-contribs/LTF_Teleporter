@@ -25,14 +25,11 @@ namespace LTF_Teleport
         // Work base
         Building building = null;
         Vector3 buildingPos;
-        String buildingName = string.Empty;
-        String myDefName = string.Empty;
+        public string buildingName = string.Empty;
+        public string myDefName = string.Empty;
         Map myMap = null;
 
         string[] AutoLabel = { "If activated from workstation, ", "Automatically, " };
-        string[] WayLabel = { "No way", "Tp out", "Tp in", "Swap" };
-        string[] WayArrow = { "(x)", " =>", "<= ", "<=>" };
-        string[] WayActionLabel = { "do nothing", "send away", "bring back", "exchange" };
 
         // definition
         public bool requiresPower = true;
@@ -44,15 +41,11 @@ namespace LTF_Teleport
         Pawn standingUser = null;
         bool benchManaged = false;
 
-        public enum Way { No = 0, Out = 1, In = 2, Swap = 3 };
-        Texture2D[] WayGizmo = { MyGizmo.WayNoGz, MyGizmo.WayOutGz, MyGizmo.WayInGz, MyGizmo.WaySwapGz };
-        SimpleColor[] WayColor = { SimpleColor.White, SimpleColor.Red, SimpleColor.Cyan, SimpleColor.Magenta };
-
         public Building twin = null;
         public ToolsBuilding.Link MyLink = ToolsBuilding.Link.Orphan;
 
         bool AutomaticTeleportation = false;
-        public Way MyWay = Way.No;
+        public MyWay.Way myWay = MyWay.Way.No;
 
         //calculated
         float twinDistance = 0f;
@@ -150,7 +143,7 @@ namespace LTF_Teleport
         int FrameSlower = 0;
         public bool drawUnderlay = true;
         public bool drawOverlay = true;
-        private float myOpacity = 1f;
+        public float myOpacity = 1f;
 
         // Debug 
         public bool gfxDebug = false;
@@ -227,59 +220,9 @@ namespace LTF_Teleport
                 compTwin.AutomaticTeleportation = AutomaticTeleportation;
         }
 
-        public Way NextWay
+        private void Browse()
         {
-            get
-            {
-                Way Answer = Way.No;
-
-                if (IsOrphan)
-                    return Answer;
-
-                Answer = ((MyWay == Way.Swap) ? (Way.No) : (MyWay.Next()));
-
-                if ((int)Answer > (int)Way.Swap)
-                    Answer = Way.No;
-
-                return Answer;
-            }
-        }
-        public void BrowseWay()
-        {
-            MyWay = NextWay;
-            switch (MyWay)
-            {
-                case Way.Out:
-                    compTwin.MyWay=Way.In;
-                    break;
-                case Way.In:
-                    compTwin.MyWay = Way.Out;
-                    break;
-                case Way.Swap:
-                    compTwin.MyWay = Way.Swap;
-                    break;
-                case Way.No:
-                    compTwin.MyWay = Way.No;
-                    break;
-            }
-        }
-        bool InvalidWay
-        {
-            get
-            {
-                return (!ValidWay);
-            }
-        }
-        public bool ValidWay
-        {
-            get
-            {
-                int cast = (int)MyWay;
-                int min = (int)Way.No;
-                int max = (int)Way.Swap;
-
-                return ((cast >= min) && (cast <= max));
-            }
+            myWay.BrowseWay(compTwin);
         }
 
         public Texture2D IssueGizmoing
@@ -304,47 +247,9 @@ namespace LTF_Teleport
                 return Answer;
             }
         }
-        public Texture2D WayGizmoing
-        {
-            get
-            {
-                if ((int)MyWay > (WayGizmo.Length - 1))
-                    return null;
 
-                return (WayGizmo[(int)MyWay]);
-            }
-        }
 
-        public string WayNaming
-        {
-            get
-            {
-                if ((int)MyWay > (WayLabel.Length - 1))
-                    return ("way outbound");
 
-                return (WayLabel[(int)MyWay]);
-            }
-        }
-        public string NextWayNaming
-        {
-            get
-            {
-                if ((int)NextWay > WayLabel.Length - 1)
-                    return ("next way outbound");
-
-                return (WayLabel[(int)NextWay]);
-            }
-        }
-        public string WayActionLabeling
-        {
-            get
-            {
-                if ((int)MyWay > WayActionLabel.Length - 1)
-                    return ("way action outbound");
-
-                return (WayActionLabel[(int)MyWay]);
-            }
-        }
         public string AutoLabeling
         {
             get
@@ -358,27 +263,7 @@ namespace LTF_Teleport
                 return (AutoLabel[boolToInt]);
             }
         }
-        public string WayArrowLabeling
-        {
-            get
-            {
-                if ((int)MyWay > WayArrow.Length - 1)
-                    return ("Arrow outbound");
-
-                return (WayArrow[(int)MyWay]);
-            }
-        }
-        public SimpleColor WayColoring
-        {
-            get
-            {
-                if ((int)MyWay > WayColor.Length - 1)
-                    return (SimpleColor.White);
-                    //return ("Color outbound");
-
-                return (WayColor[(int)MyWay]);
-            }
-        }
+ 
 
         public ToolsBuilding.Link NextLink
         {
@@ -409,25 +294,7 @@ namespace LTF_Teleport
             }
         }
 
-        public string WayDescription
-        {
-            get
-            {
-                string Answer = string.Empty;
 
-                Answer += 
-                    AutoLabeling +
-                    "will " + WayActionLabeling + ' ' +
-                    "what stands on this " + myDefName;
-
-                if (IsLinked)
-                {
-                    Answer += " and its twin.";
-                }
-
-                return Answer;
-            }
-        }
 
         //Dependency :Cooldown
         private bool IsChilling
@@ -592,7 +459,7 @@ namespace LTF_Teleport
 
         private void ResetSettings()
         {
-            MyWay = Way.No;
+            myWay.ResetWay();
             AutomaticTeleportation = false;
 
             // TRying to remove spot from workstation it's registered
@@ -703,8 +570,8 @@ namespace LTF_Teleport
         {
             if (HasNothing)
                 return;
-            MyWay = Way.Out;
-            compTwin.MyWay = Way.In;
+            myWay = MyWay.Way.Out;
+            compTwin.myWay = MyWay.Way.In;
 
             WorkstationOrder(prcDebug);
             BeginTeleportItemAnimSeq();
@@ -717,8 +584,8 @@ namespace LTF_Teleport
         
         public void OrderSwap()
         {
-            MyWay = Way.Swap;
-            compTwin.MyWay = Way.Swap;
+            myWay.SetSwap();
+            compTwin.myWay.SetSwap();
 
             WorkstationOrder(prcDebug);
             BeginTeleportItemAnimSeq();
@@ -882,14 +749,14 @@ namespace LTF_Teleport
                 return false;
             }
 
-            if (MyWay == Way.Out)
+            if (myWay.IsOut())
                 if (!HasItems)
                 {
                     Tools.Warn("WayOut no item - wont tp", debug);
                     return false;
                 }
 
-            Tools.Warn("TP MyWay => " + MyWay, debug);
+            Tools.Warn("TP MyWay => " + myWay, debug);
 
             //IntVec3 destination = ((MyWay == Way.Out) ? (twin.Position) : (building.Position));
             IntVec3 twinPos = twin.Position;
@@ -905,7 +772,7 @@ namespace LTF_Teleport
 
             // swap items
             //if (teleportOrder && compTwin.teleportOrder)
-            if ( MyWay == Way.Swap && compTwin.MyWay == Way.Swap )
+            if ( myWay.IsSwap() && compTwin.myWay.IsSwap() )
             {
                 foreach (Thing cur in thingList)
                 {
@@ -941,7 +808,7 @@ namespace LTF_Teleport
                 }
             }
             
-            else if (MyWay == Way.Out)
+            else if (myWay.IsOut())
             {
                 foreach (Thing cur in thingToTeleport)
                 {
@@ -1259,7 +1126,7 @@ namespace LTF_Teleport
             MyLink = ToolsBuilding.Link.Orphan;
             twinDistance = 0;
 
-            ResetWay();
+            myWay.ResetWay();
         }
         public bool IsLinked
         {
@@ -1275,10 +1142,7 @@ namespace LTF_Teleport
                 return (twin == null || compTwin == null);
             }
         }
-        private void ResetWay()
-        {
-            MyWay = Way.No;
-        }
+
         public void ResetFacility()
         {
             facility = null;
@@ -1619,7 +1483,7 @@ namespace LTF_Teleport
         {
             TeleportItemAnimStatus = Gfx.AnimStep.begin;
             SetBeginAnimLength();
-            if(IsLinked && MyWay == Way.Swap && compTwin.HasItems)
+            if(IsLinked && myWay.IsSwap() && compTwin.HasItems)
             {
                 compTwin.TeleportItemAnimStatus = Gfx.AnimStep.begin;
                 compTwin.SetBeginAnimLength();
@@ -1646,13 +1510,7 @@ namespace LTF_Teleport
         {
             Tools.Warn("AnimStatus - " + TeleportItemAnimStatus + ": " + beginSequenceI + "/" + BeginSequenceFrameLength, debug);
         }
-        public float AnimOpacity
-        {
-            get
-            {
-                return myOpacity;
-            }
-        }
+        //public float AnimOpacity => myOpacity;
         public void SetFrameSlower()
         {
             FrameSlower = FrameSlowerMax;
@@ -1781,17 +1639,15 @@ namespace LTF_Teleport
                 );
             }
         }
-
         string DumpSettings
         {
             get
             {
                 return (
-                    "; way: "+MyWay+"; Link:"+IsLinked+"; Auto:" + AutomaticTeleportation
+                    "; way: " + myWay + "; Link:" + IsLinked + "; Auto:" + AutomaticTeleportation
                 );
             }
         }
-
         private string DumpList()
         {
             string bla = String.Empty;
@@ -1823,15 +1679,15 @@ namespace LTF_Teleport
                 if (Tools.CapacityUsing(currentCooldown))
                     Answer ^= BuildingStatus.cooldown;
 
-                switch (MyWay)
+                switch (myWay)
                 {
-                    case Way.Out:
+                    case MyWay.Way.Out:
                         if (HasNothing)
                             Answer ^= BuildingStatus.noItem;
                         break;
-                    case Way.In:
+                    case MyWay.Way.In:
                         break;
-                    case Way.Swap:
+                    case MyWay.Way.Swap:
                         if (HasNothing)
                             Answer ^= BuildingStatus.noItem;
                         break;
@@ -2105,7 +1961,7 @@ namespace LTF_Teleport
 
             SetWeightedProperties();
 
-            if (InvalidWay)
+            if (myWay.InvalidWay())
             {
                 Tools.Warn("reset bc bad way", prcDebug);
                 ResetSettings();
@@ -2255,17 +2111,17 @@ namespace LTF_Teleport
                 )
             {
                 Tools.Warn(tellMe + " - Starting automatic order", prcDebug);
-                switch (MyWay)
+                switch (myWay)
                 {
-                    case Way.Out:
+                    case MyWay.Way.Out:
                         if(HasItems)
                             OrderOut();
                         break;
-                    case Way.In:
+                    case MyWay.Way.In:
                         if(compTwin.HasItems)
                             OrderIn();
                         break;
-                    case Way.Swap:
+                    case MyWay.Way.Swap:
                         // one or another has something to tp
                         if (HasItems || compTwin.HasItems)
                             OrderSwap();
@@ -2357,7 +2213,7 @@ namespace LTF_Teleport
             Scribe_References.Look(ref twin, "linkedspot");
             Scribe_Values.Look(ref MyLink, "LinkStatus");
 
-            Scribe_Values.Look(ref MyWay, "way");
+            Scribe_Values.Look(ref myWay, "way");
             Scribe_Values.Look(ref AutomaticTeleportation, "AutomaticTeleportation");
 
             Scribe_Values.Look(ref teleportOrder, "order");
@@ -2426,7 +2282,7 @@ namespace LTF_Teleport
                     myLabel = "Unlink";
                     myDesc = (
                         "Linked with " + twin.def.label + "\n" +
-                        Tools.PosStr(building.Position) + " " + WayArrowLabeling + " " + Tools.PosStr(twin.Position) +
+                        Tools.PosStr(building.Position) + " " + myWay.WayArrowLabeling() + " " + Tools.PosStr(twin.Position) +
                         "\nClick to unlink."
                     );
                     todo = new Action(UnlinkMe);
@@ -2444,29 +2300,29 @@ namespace LTF_Teleport
             if (requiresPower && HasPower && IsLinked)// && !StatusNoFacility)
             {
                 // Way to teleport
-                if (ValidWay)
+                if (myWay.ValidWay())
                 {
-                    String WayName = WayNaming;
-                    String NextName = NextWayNaming;
+                    string WayName = myWay.WayNaming();
+                    string NextName = myWay.NextWayNaming(IsOrphan);
 
-                    Texture2D myGizmo = WayGizmoing;
+                    Texture2D myGizmo = myWay.WayGizmoing();
 
                     //((Auto) ? (MyGizmo.AutoOnGz) : (MyGizmo.AutoOffGz));
                     String myLabel = "browse ways";
                     String myDesc = "Current : " + WayName;
-                    myDesc += "\nClick to change to " + NextWayNaming;
-                        
+                    myDesc += "\nClick to change to " + myWay.NextWayNaming(IsOrphan);
+
                     yield return new Command_Action
                     {
                         icon = myGizmo,
                         defaultLabel = myLabel,
                         defaultDesc = myDesc,
-                        action = new Action(this.BrowseWay)
+                        action = new Action(Browse)
                     };
                 }
                 else
                 {
-                    Tools.Warn("Invalid way:" + (int)MyWay);
+                    Tools.Warn("Invalid way:" + (int)myWay, prcDebug);
                 }
 
                 // Auto or not
@@ -2673,7 +2529,7 @@ namespace LTF_Teleport
             // Flickering line between spot and twin
             if (IsLinked)
             {
-                GenDraw.DrawLineBetween(this.parent.TrueCenter(), twin.TrueCenter(), WayColoring);
+                GenDraw.DrawLineBetween(this.parent.TrueCenter(), twin.TrueCenter(), myWay.WayColoring());
             }
 
             if (range > 0f)

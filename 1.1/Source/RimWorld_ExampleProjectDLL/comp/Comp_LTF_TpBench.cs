@@ -221,7 +221,7 @@ namespace LTF_Teleport
                     if ((compSpot != null) && compSpot.IsLinked)
                     {
                         // " <=> "
-                        report += " " + compSpot.WayArrowLabeling  + " ";
+                        report += " " + compSpot.myWay.WayArrowLabeling()  + " ";
                         report += compSpot.twin.Label + Tools.PosStr(compSpot.twin.Position);
                     }
                     else
@@ -336,9 +336,9 @@ namespace LTF_Teleport
             {
                 {
                     Texture2D myMat = MyGizmo.EmptyStatus2Gizmo(IsEmpty, IsFull);
-                    String myLabel = "Registry";
-                    String Grammar = ((MoreThanOne) ? ("s") : (""));
-                    String myDesc = Tools.CapacityString(Registry.Count, FacilityCapacity) + ' ' + TpSpotName + ".";
+                    string myLabel = "Registry";
+                    string Grammar = ((MoreThanOne) ? ("s") : (""));
+                    string myDesc = Tools.CapacityString(Registry.Count, FacilityCapacity) + ' ' + TpSpotName + ".";
 
                     if (IsEmpty || IsFull)
                     {
@@ -363,9 +363,9 @@ namespace LTF_Teleport
                     Comp_LTF_TpSpot comp = CurrentSpot?.TryGetComp<Comp_LTF_TpSpot>();
                     if (comp != null)
                     {
-                        if (comp.ValidWay)
+                        if (comp.myWay.ValidWay())
                         {
-                            String WayName = comp.WayNaming;
+                            String WayName = comp.myWay.WayNaming();
                             Texture2D myGizmo = null;
 
                             //if (comp.StatusReady && comp.IsLinked && !comp.compTwin.StatusChillin)
@@ -375,14 +375,14 @@ namespace LTF_Teleport
                             else
                                 myGizmo = comp.IssueGizmoing;
                             */
-                            myGizmo = comp.WayGizmoing;
+                            myGizmo = comp.myWay.WayGizmoing();
 
                             if(comp.IsLinked)
                             if (comp.compTwin.StatusChillin)
                                 myGizmo = comp.compTwin.IssueGizmoing;
 
-                            String myLabel = "Cast "+WayName;
-                            String myDesc = comp.WayDescription;
+                            string myLabel = "Cast "+WayName;
+                            string myDesc = comp.myWay.WayDescription(comp.AutoLabeling, comp.AutoLabeling, comp.IsLinked);
                             //+ "\n" + comp.StatusLogNoUpdate;
                             //Action todo = ShowReport;
                             Action todo = delegate
@@ -399,13 +399,13 @@ namespace LTF_Teleport
                                 else if (comp.compTwin.StatusChillin)
                                     myDesc = "Selected spot twin has some cooldown.";
                             }
-                            else if (comp.MyWay == Comp_LTF_TpSpot.Way.Out)
+                            else if (comp.myWay.IsOut())
                                 todo = comp.OrderOut;
-                            else if (comp.MyWay == Comp_LTF_TpSpot.Way.In)
+                            else if (comp.myWay.IsIn())
                                 todo = comp.OrderIn;
                             //todo = comp.compTwin.OrderOut;
                             //todo = comp.OrderIn;
-                            else if (comp.MyWay == Comp_LTF_TpSpot.Way.Swap)
+                            else if (comp.myWay.IsSwap())
                                 todo = comp.OrderSwap;
 
                             /*
@@ -562,11 +562,11 @@ namespace LTF_Teleport
                 return;
 
             // Line from workstation to spot (in range)
-            GenDraw.DrawLineBetween(this.parent.TrueCenter(), CurrentSpot.TrueCenter(), comp.WayColoring);
+            GenDraw.DrawLineBetween(this.parent.TrueCenter(), CurrentSpot.TrueCenter(), comp.myWay.WayColoring());
             if (comp.IsLinked)
             {
                 // Line from spot to spot
-                GenDraw.DrawLineBetween(CurrentSpot.TrueCenter(), comp.twin.TrueCenter(), comp.WayColoring);
+                GenDraw.DrawLineBetween(CurrentSpot.TrueCenter(), comp.twin.TrueCenter(), comp.myWay.WayColoring());
                 // Wish we could make it more noticeable
             }
         }

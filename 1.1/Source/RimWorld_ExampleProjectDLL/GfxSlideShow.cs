@@ -123,7 +123,7 @@ namespace LTF_Teleport
                 //matrix.SetTRS(drawPos, (extraRotation != 0)?(Quaternion.AngleAxis(extraRotation, Vector3.up)):Quaternion.identity, dotS);
                 matrix.SetTRS(loc, (extraRotation != 0) ? (Quaternion.AngleAxis(extraRotation, Vector3.up)) : Quaternion.identity, dotS);
 
-                Material material = FadedMaterialPool.FadedVersionOf(graphic.MatSingle, comp.AnimOpacity);
+                Material material = FadedMaterialPool.FadedVersionOf(graphic.MatSingle, comp.myOpacity);
 
                 Graphics.DrawMesh(MeshPool.plane10, matrix, graphic.MatSingle, 0);
                 //Log.Warning("Drew " + frameI + "/" + frameMax);

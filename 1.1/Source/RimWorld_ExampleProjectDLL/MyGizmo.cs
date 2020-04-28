@@ -78,15 +78,16 @@ namespace LTF_Teleport
         public static Texture2D IssueCooldownGz = ContentFinder<Texture2D>.Get(IssuePath + "Cooldown", true);
         public static Texture2D IssueOverweightGz = ContentFinder<Texture2D>.Get(IssuePath + "Overweight", true);
 
+        public static Texture2D[] WayGizmo = { WayNoGz, WayOutGz, WayInGz, WaySwapGz };
 
         public static Texture2D EmptyStatus2Gizmo(bool empty, bool full)
         {
-            Texture2D Answer = MyGizmo.TpLogGz;
+            Texture2D Answer = TpLogGz;
 
             if (empty)
-                Answer = MyGizmo.EmptyRegistryGz;
+                Answer = EmptyRegistryGz;
             if (full)
-                Answer = MyGizmo.FullRegistryGz;
+                Answer = FullRegistryGz;
 
             return Answer;
         }
