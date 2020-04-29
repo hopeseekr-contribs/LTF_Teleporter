@@ -57,6 +57,9 @@
     <Compile Include="compTarget\CompTargetEffect_TpSpotLink.cs" />
     <Compile Include="comp\Comp_LTF_TpBench.cs" />
     <Compile Include="GfxSlideShow.cs" />
+    <Compile Include="graphic\MatrixOverlay\CompMatrixOverlay.cs" />
+    <Compile Include="graphic\MatrixOverlay\CompProperties_MatrixOverlay.cs" />
+    <Compile Include="graphic\MatrixOverlay\Graphic_MatrixOverlay.cs" />
     <Compile Include="MyGizmo.cs" />
     <Compile Include="ToolsBuilding.cs" />
     <Compile Include="compProperties\CompProperties_LTF_TpSpot.cs" />

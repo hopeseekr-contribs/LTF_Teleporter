@@ -96,6 +96,10 @@ State your orders and schedule strategic wanderings.</description>
 				<moreRange>1</moreRange>
 				<moreRangeBase>5</moreRangeBase>
 			</li>
+			<li Class="LTF_Teleport.CompProperties_MatrixOverlay">
+				<animationSize>(.7, .3</animationSize>
+				<offset>(0,0,.6)</offset>
+			</li>
 			
 		</comps>
 		

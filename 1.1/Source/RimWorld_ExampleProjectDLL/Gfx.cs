@@ -159,7 +159,7 @@ namespace LTF_Teleport
 
             Graphics.DrawMesh(mesh, matrix, material, 0);
         }
-        private void Draw1x1Overlay(Vector3 buildingPos, Material gfx, Mesh mesh, float drawSize, bool debug)
+        public void Draw1x1Overlay(Vector3 buildingPos, Material gfx, Mesh mesh, float drawSize, bool debug)
         {
             Vector3 dotS = new Vector3(drawSize, 1f, drawSize);
             Matrix4x4 matrix = default(Matrix4x4);

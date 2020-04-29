@@ -248,8 +248,6 @@ namespace LTF_Teleport
             }
         }
 
-
-
         public string AutoLabeling
         {
             get
@@ -263,7 +261,6 @@ namespace LTF_Teleport
                 return (AutoLabel[boolToInt]);
             }
         }
- 
 
         public ToolsBuilding.Link NextLink
         {
@@ -293,8 +290,6 @@ namespace LTF_Teleport
                 return (ToolsBuilding.LinkLabel[(int)NextLink]);
             }
         }
-
-
 
         //Dependency :Cooldown
         private bool IsChilling
@@ -576,12 +571,10 @@ namespace LTF_Teleport
             WorkstationOrder(prcDebug);
             BeginTeleportItemAnimSeq();
         }
-        
         public void OrderIn()
         {
             compTwin.OrderOut();
         }
-        
         public void OrderSwap()
         {
             myWay.SetSwap();
@@ -672,7 +665,6 @@ namespace LTF_Teleport
                 Tools.Warn("thing moved :" + thing.LabelShort, debug);
             }
         }
-
         private void TeleportItem(Thing thing, IntVec3 destination, bool debug=false)
         {
             if (thing == null)
@@ -728,7 +720,6 @@ namespace LTF_Teleport
                 Tools.Warn("thing moved :" + thing.LabelShort, debug);
             }
         }
-
         private bool TryTeleport(bool debug = false)
         {
             bool gotSomeJitter = false;
@@ -879,7 +870,6 @@ namespace LTF_Teleport
                 warmUpCalculated = 2;
             */
         }
-
         private void SetWarmUpLeft()
         {
             warmUpLeft = warmUpCalculated;
@@ -890,7 +880,7 @@ namespace LTF_Teleport
         {
             get
             {
-                return ( (facility != null) && (compBench!=null));
+                return ((facility != null) && (compBench != null));
             }
         }
         public bool HasPoweredFacility
@@ -1403,7 +1393,6 @@ namespace LTF_Teleport
             Tools.Warn(thing.LabelShort + " adds(" + plusOrMinus + ")" + newWeight + " -> " + currentWeight, prcDebug);
         }
 
-
         // Special Item : pawn
         private void SetPawn(Pawn pawn = null)
         {
@@ -1444,7 +1433,7 @@ namespace LTF_Teleport
             }
         }
 
-        //public bool TeleportItemAnimEnd
+        //
         public bool TpSequenceEnd
         {
             get
@@ -1452,7 +1441,6 @@ namespace LTF_Teleport
                 return (TeleportItemAnimStatus == Gfx.AnimStep.end);
             }
         }
-        //public bool TeleportItemAnimBegin
         public bool TpSequenceBegin
         {
             get
@@ -1510,7 +1498,6 @@ namespace LTF_Teleport
         {
             Tools.Warn("AnimStatus - " + TeleportItemAnimStatus + ": " + beginSequenceI + "/" + BeginSequenceFrameLength, debug);
         }
-        //public float AnimOpacity => myOpacity;
         public void SetFrameSlower()
         {
             FrameSlower = FrameSlowerMax;
@@ -1522,7 +1509,6 @@ namespace LTF_Teleport
 
             return FrameSlower;
         }
-
         public bool SetSlideShowOn(bool debug = false)
         {
             if(compTwin == null)
@@ -1542,7 +1528,6 @@ namespace LTF_Teleport
 
             return true;
         }
-
         public bool NextAnim(bool debug = false)
         {
             bool Answer = false;
@@ -1938,7 +1923,6 @@ namespace LTF_Teleport
                 }
             Tools.Warn("Overlay drew - warning: " + (warning != null) + "; anim: " + (overlay != null), gfxDebug);
         }
-
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
             //Building
@@ -2197,7 +2181,6 @@ namespace LTF_Teleport
             Tools.Warn(buildingName + "=>" + tellMe, prcDebug);
             Tools.Warn(">>>TICK End<<< ", prcDebug);
         }
-
         public override void PostExposeData()
         {
             base.PostExposeData();
@@ -2220,7 +2203,6 @@ namespace LTF_Teleport
             Scribe_Values.Look(ref warmUpLeft, "warmUpLeft");
             Scribe_Values.Look(ref warmUpCalculated, "warmUpCalculated");
         }
-
         public override string CompInspectStringExtra()
         {
             string text = base.CompInspectStringExtra();
@@ -2523,7 +2505,6 @@ namespace LTF_Teleport
                 }
             }
         }
-
         public override void PostDrawExtraSelectionOverlays()
         {
             // Flickering line between spot and twin
