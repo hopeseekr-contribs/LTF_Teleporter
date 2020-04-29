@@ -3,7 +3,7 @@
 
 	<ThingDef ParentName="BuildingBase">
 		<defName>LTF_MiniStation</defName>
-		<label>Teleport ministation</label>
+		<label>teleporter ministation</label>
 		<thingClass>Building_WorkTable</thingClass>
 
 		<graphicData>
@@ -40,7 +40,7 @@
 		
 		<tickerType>Normal</tickerType>
 
-		<description>A mini workstation.
+		<description>A mini workstation for controlling the teleporter.
 - Requires at least 1 teleport spot.
 State your orders and schedule strategic wanderings.</description>
 		<size>(1,1)</size>
