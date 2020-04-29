@@ -3,7 +3,7 @@
 
 	<ThingDef ParentName="BuildingBase">
 		<defName>LTF_TpBench</defName>
-		<label>Teleport workstation</label>
+		<label>teleporter workstation</label>
 		<thingClass>Building_WorkTable</thingClass>
 
 		<graphicData>
@@ -42,7 +42,7 @@
 		
 		<tickerType>Normal</tickerType>
 
-		<description>A power consumptive workstation.
+		<description>A large workstation for controlling the teleporter. Requires a lot of power.
 - Requires at least 1 teleport spot.
 State your orders and schedule strategic wanderings.</description>
 		<size>(3,1)</size>
