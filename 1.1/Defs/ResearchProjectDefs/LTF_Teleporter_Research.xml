@@ -3,7 +3,7 @@
 
 	<ResearchProjectDef>
 		<defName>LTF_Research_TpSpot</defName>
-		<label>Teleportation Spot</label>
+		<label>teleportation spot</label>
 		<description>Build a teleportation spot to send pawns elsewhere.</description>
 		<baseCost>1200</baseCost>
 		<techLevel>Industrial</techLevel>
@@ -18,7 +18,7 @@
 
 	<ResearchProjectDef>
 		<defName>LTF_Research_TpBench</defName>
-		<label>Teleportation Bench</label>
+		<label>teleportation bench</label>
 		<description>Construct a workbench to control your teleportation system.</description>
 		<baseCost>2500</baseCost>
 		<techLevel>Spacer</techLevel>
