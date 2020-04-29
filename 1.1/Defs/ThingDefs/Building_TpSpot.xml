@@ -5,7 +5,7 @@
 	<ThingDef ParentName="FurnitureWithQualityBase">
     <defName>LTF_TpSpot</defName>
     <label>Teleport spot</label>
-    <description>A place to the infinite and beyond.
+    <description>Departures here: to infinity and beyond! The teleport spot sends pawns to other locations.
 Requires a teleport bench.</description>
     <!-- <thingClass>Building_WorkTable</thingClass> -->
 	<thingClass>Building_Storage</thingClass>
