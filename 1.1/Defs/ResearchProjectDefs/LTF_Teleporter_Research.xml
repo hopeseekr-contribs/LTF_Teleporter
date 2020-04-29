@@ -3,8 +3,8 @@
 
 	<ResearchProjectDef>
 		<defName>LTF_Research_TpSpot</defName>
-		<label>Tp spot</label>
-		<description>Required to build a tp spot</description>
+		<label>Teleportation Spot</label>
+		<description>Build a teleportation spot to send pawns elsewhere.</description>
 		<baseCost>1200</baseCost>
 		<techLevel>Industrial</techLevel>
 		<tab>LTFTeleporter</tab>
@@ -18,8 +18,8 @@
 
 	<ResearchProjectDef>
 		<defName>LTF_Research_TpBench</defName>
-		<label>Tp bench</label>
-		<description>Required to state teleporters departure.</description>
+		<label>Teleportation Bench</label>
+		<description>Construct a workbench to control your teleportation system.</description>
 		<baseCost>2500</baseCost>
 		<techLevel>Spacer</techLevel>
 		<tab>LTFTeleporter</tab>
